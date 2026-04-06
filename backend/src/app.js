@@ -42,7 +42,7 @@ const {
   comparePassword,
 } = require('./utils/passwords');
 
-const { generateResetToken, generateJwt } = require('./utils/tokens');
+const { generateResetToken, generateJwt, verifyJwt } = require('./utils/tokens');
 
 const {
   getJobStatus,
@@ -1637,32 +1637,137 @@ async function listUsersAdmin(query) {
   return { count: results.length, results };
 }
 
-async function listBusinessesAdmin(query) {
-  const verified = parseOptionalQueryBoolean(query.verified, 'verified');
+function getOptionalRoleFromRequest(req) {
+  const authHeader = req.get('Authorization');
+  if (!authHeader) return null;
+
+  const [scheme, token] = authHeader.split(' ');
+  if (scheme !== 'Bearer' || !token) {
+    throw unauthorized('Invalid Authorization header');
+  }
+
+  try {
+    const payload = verifyJwt(token);
+    return payload.role || null;
+  } catch (_err) {
+    throw unauthorized('Invalid or expired token');
+  }
+}
+
+async function listBusinesses(query, isAdmin) {
+  const keyword =
+    query.keyword === undefined ? undefined : String(query.keyword).trim().toLowerCase();
   const activated = parseOptionalQueryBoolean(query.activated, 'activated');
-  const email = query.email === undefined ? undefined : String(query.email).trim().toLowerCase();
+  const verified = parseOptionalQueryBoolean(query.verified, 'verified');
+  const sort = query.sort === undefined ? undefined : String(query.sort).trim();
+  const order =
+    query.order === undefined ? 'asc' : String(query.order).trim().toLowerCase();
+  const page = query.page === undefined ? 1 : parsePositiveInt(query.page, 'page');
+  const limit = query.limit === undefined ? 10 : parsePositiveInt(query.limit, 'limit');
+
+  if (!['asc', 'desc'].includes(order)) {
+    throw badRequest('order must be asc or desc');
+  }
+
+  if (!isAdmin && (activated !== undefined || verified !== undefined)) {
+    throw badRequest('activated and verified are admin-only');
+  }
+
+  if (sort !== undefined) {
+    const allowedSorts = isAdmin
+      ? ['business_name', 'email', 'owner_name']
+      : ['business_name', 'email'];
+
+    if (!allowedSorts.includes(sort)) {
+      throw badRequest('Invalid sort');
+    }
+  }
 
   const accounts = await prisma.account.findMany({
-    where: {
-      role: 'BUSINESS',
-      ...(activated === undefined ? {} : { activated }),
-      ...(email === undefined ? {} : { email: { contains: email } }),
-    },
-    include: {
-      business: true,
-    },
+    where: { role: 'BUSINESS' },
+    include: { business: true },
     orderBy: { id: 'asc' },
   });
 
-  const filtered = accounts.filter((account) => {
-    if (verified !== undefined && account.business.verified !== verified) {
-      return false;
+  let filtered = accounts.filter((account) => {
+    if (!account.business) return false;
+
+    if (!isAdmin) {
+      if (!account.activated || !account.business.verified) {
+        return false;
+      }
+    } else {
+      if (activated !== undefined && account.activated !== activated) {
+        return false;
+      }
+      if (verified !== undefined && account.business.verified !== verified) {
+        return false;
+      }
     }
+
+    if (keyword) {
+      const haystack = [
+        account.business.businessName,
+        account.email,
+        account.business.postalAddress,
+        account.business.phoneNumber,
+        ...(isAdmin ? [account.business.ownerName] : []),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      if (!haystack.includes(keyword)) {
+        return false;
+      }
+    }
+
     return true;
   });
 
-  const results = filtered.map((account) => serializeBusiness(account));
-  return { count: results.length, results };
+  if (sort) {
+    const getSortValue = (account) => {
+      if (sort === 'business_name') return account.business.businessName.toLowerCase();
+      if (sort === 'email') return account.email.toLowerCase();
+      return account.business.ownerName.toLowerCase();
+    };
+
+    filtered.sort((a, b) => {
+      const av = getSortValue(a);
+      const bv = getSortValue(b);
+
+      if (av < bv) return order === 'asc' ? -1 : 1;
+      if (av > bv) return order === 'asc' ? 1 : -1;
+      return a.id - b.id;
+    });
+  }
+
+  const results = filtered.map((account) => {
+    const base = {
+      id: account.id,
+      business_name: account.business.businessName,
+      email: account.email,
+      role: roleToApi(account.role),
+      phone_number: account.business.phoneNumber,
+      postal_address: account.business.postalAddress,
+    };
+
+    if (isAdmin) {
+      return {
+        ...base,
+        owner_name: account.business.ownerName,
+        verified: account.business.verified,
+        activated: account.activated,
+      };
+    }
+
+    return base;
+  });
+
+  const start = (page - 1) * limit;
+  return {
+    count: results.length,
+    results: results.slice(start, start + limit),
+  };
 }
 
 async function patchUserSuspended(userId, body) {
@@ -2976,9 +3081,10 @@ function create_app() {
     .all(methodNotAllowed);
 
   app.route('/businesses')
-    .get(requireAuth, requireRole('ADMIN'), async (req, res, next) => {
+    .get(async (req, res, next) => {
       try {
-        const result = await listBusinessesAdmin(req.query);
+        const role = getOptionalRoleFromRequest(req);
+        const result = await listBusinesses(req.query, role === 'ADMIN');
         res.status(200).json(result);
       } catch (err) {
         next(err);
@@ -2988,6 +3094,48 @@ function create_app() {
       try {
         const result = await createBusiness(req.body);
         res.status(201).json(result);
+      } catch (err) {
+        next(err);
+      }
+    })
+    .all(methodNotAllowed);
+
+  app.route('/businesses/:businessId')
+    .get(async (req, res, next) => {
+      try {
+        const role = getOptionalRoleFromRequest(req);
+        const businessId = parsePositiveInt(req.params.businessId, 'businessId');
+
+        const account = await prisma.account.findUnique({
+          where: { id: businessId },
+          include: { business: true },
+        });
+
+        if (!account || account.role !== 'BUSINESS' || !account.business) {
+          throw notFound('Business not found');
+        }
+
+        if (role !== 'ADMIN' && (!account.activated || !account.business.verified)) {
+          throw notFound('Business not found');
+        }
+
+        const result = {
+          id: account.id,
+          business_name: account.business.businessName,
+          email: account.email,
+          role: roleToApi(account.role),
+          phone_number: account.business.phoneNumber,
+          postal_address: account.business.postalAddress,
+          biography: account.business.biography,
+        };
+
+        if (role === 'ADMIN') {
+          result.owner_name = account.business.ownerName;
+          result.verified = account.business.verified;
+          result.activated = account.activated;
+        }
+
+        res.status(200).json(result);
       } catch (err) {
         next(err);
       }
