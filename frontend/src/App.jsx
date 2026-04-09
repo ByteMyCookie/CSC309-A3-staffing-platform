@@ -45,6 +45,14 @@ function Navbar({ authToken, onLogout }) {
       {isAdmin && <Link to="/admin/users" style={styles.link}>Admin Users</Link>}
       {isAdmin && <Link to="/admin/position-types" style={styles.link}>Admin Position Types</Link>}
       {role === 'BUSINESS' && <Link to="/business/jobs" style={styles.link}>My Jobs</Link>}
+      {isAdmin && <Link to="/admin/system" style={styles.link}>Admin System</Link>}
+
+      {isLoggedIn && (role === 'REGULAR' || role === 'BUSINESS') && (
+        <Link to="/negotiation" style={styles.link}>My Negotiation</Link>
+      )}
+
+      {isRegular && <Link to="/my-interests" style={styles.link}>My Interests</Link>}
+      {isRegular && <Link to="/my-invitations" style={styles.link}>My Invitations</Link>}
 
       {isLoggedIn && (
         <button onClick={handleLogout} style={styles.logoutButton}>
@@ -57,9 +65,75 @@ function Navbar({ authToken, onLogout }) {
 
 function HomePage() {
   return (
-    <div>
-      <h1>Staffing Platform</h1>
-      <p>This will be your A3 frontend.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <section style={styles.detailCard}>
+        <h1>Temporary Staffing Platform</h1>
+        <p>
+          Find qualified short-term staff, manage job postings, review qualifications,
+          and handle time-sensitive negotiations between regular users and businesses.
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
+          <Link to="/login" style={styles.smallButton}>
+            Login
+          </Link>
+
+          <Link to="/register/user" style={styles.smallButton}>
+            Register as User
+          </Link>
+
+          <Link to="/register/business" style={styles.smallButton}>
+            Register as Business
+          </Link>
+
+          <Link to="/businesses" style={styles.smallButton}>
+            Browse Businesses
+          </Link>
+        </div>
+      </section>
+
+      <section style={styles.list}>
+        <div style={styles.listCard}>
+          <h2>For Regular Users</h2>
+          <p>Build a profile, upload documents, request qualifications, browse matching jobs, and manage invitations and negotiations.</p>
+          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+            <li>Request and revise qualifications</li>
+            <li>Browse jobs you qualify for</li>
+            <li>Track invitations and interests</li>
+            <li>Respond to negotiation decisions</li>
+          </ul>
+        </div>
+
+        <div style={styles.listCard}>
+          <h2>For Businesses</h2>
+          <p>Create job postings, review candidates, invite users, track interests, and manage negotiations for open roles.</p>
+          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+            <li>Create and manage jobs</li>
+            <li>Review discoverable candidates</li>
+            <li>Invite qualified users</li>
+            <li>Start and monitor negotiations</li>
+          </ul>
+        </div>
+
+        <div style={styles.listCard}>
+          <h2>For Administrators</h2>
+          <p>Moderate platform activity by reviewing users, businesses, qualifications, position types, and system-wide settings.</p>
+          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+            <li>Approve or reject qualifications</li>
+            <li>Verify businesses</li>
+            <li>Suspend users</li>
+            <li>Adjust platform configuration</li>
+          </ul>
+        </div>
+      </section>
+
+      <section style={styles.detailCard}>
+        <h2>Platform Status Visibility</h2>
+        <p>
+          The interface is designed to make system state visible, including qualification status,
+          job status, invitations, mutual interest, and active negotiation windows.
+        </p>
+      </section>
     </div>
   );
 }
@@ -3734,6 +3808,203 @@ function BusinessJobsPage() {
   );
 }
 
+function BusinessCandidateDetailPage() {
+  const { jobId, userId } = useParams();
+  const token = localStorage.getItem('token');
+  const navigate = useNavigate();
+
+  const [candidateData, setCandidateData] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  async function loadCandidateDetail() {
+    try {
+      setLoading(true);
+      setError('');
+
+      const response = await fetch(`${API_BASE}/jobs/${jobId}/candidates/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load candidate detail');
+      }
+
+      setCandidateData(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCandidateDetail();
+  }, [jobId, userId]);
+
+  async function handleSetInterested(interested) {
+    try {
+      setActionMessage('');
+      setActionError('');
+
+      const response = await fetch(`${API_BASE}/jobs/${jobId}/candidates/${userId}/interested`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ interested }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update candidate interest');
+      }
+
+      setActionMessage(
+        interested ? 'Candidate invited successfully' : 'Invitation withdrawn successfully'
+      );
+    } catch (err) {
+      setActionError(err.message);
+    }
+  }
+
+  if (loading) {
+    return <h1>Loading candidate detail...</h1>;
+  }
+
+  if (error) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>Error</h1>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  if (!candidateData) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>Candidate Not Found</h1>
+      </div>
+    );
+  }
+
+  const { user, job } = candidateData;
+
+  return (
+    <div style={styles.detailCard}>
+      <h1>Candidate Detail</h1>
+
+      {actionMessage && <p style={{ color: 'green' }}>{actionMessage}</p>}
+      {actionError && <p style={{ color: 'red' }}>{actionError}</p>}
+
+      <div style={{ marginBottom: '24px' }}>
+        <h2>
+          {user.first_name} {user.last_name}
+        </h2>
+        <p><strong>User ID:</strong> {user.id}</p>
+
+        {user.biography && (
+          <p><strong>Biography:</strong> {user.biography}</p>
+        )}
+
+        {user.avatar && (
+          <div style={styles.avatarSection}>
+            <strong>Avatar:</strong>
+            <img
+              src={`${API_BASE}${user.avatar}`}
+              alt="candidate avatar"
+              style={styles.avatarImage}
+            />
+          </div>
+        )}
+
+        {user.resume ? (
+          <p>
+            <strong>Resume:</strong>{' '}
+            <a href={`${API_BASE}${user.resume}`} target="_blank" rel="noreferrer">
+              Open Resume
+            </a>
+          </p>
+        ) : (
+          <p><strong>Resume:</strong> None uploaded</p>
+        )}
+      </div>
+
+      <div style={{ marginBottom: '24px' }}>
+        <h2>Qualification</h2>
+        <p><strong>Qualification ID:</strong> {user.qualification?.id}</p>
+        <p><strong>Position Type ID:</strong> {user.qualification?.position_type_id}</p>
+
+        {user.qualification?.note ? (
+          <p><strong>Qualification Note:</strong> {user.qualification.note}</p>
+        ) : (
+          <p><strong>Qualification Note:</strong> None</p>
+        )}
+
+        {user.qualification?.document ? (
+          <p>
+            <strong>Qualification Document:</strong>{' '}
+            <a
+              href={`${API_BASE}${user.qualification.document}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Document
+            </a>
+          </p>
+        ) : (
+          <p><strong>Qualification Document:</strong> None uploaded</p>
+        )}
+      </div>
+
+      <div style={{ marginBottom: '24px' }}>
+        <h2>Job Summary</h2>
+        <p><strong>Job ID:</strong> {job.id}</p>
+        <p><strong>Status:</strong> {job.status}</p>
+        <p><strong>Position Type:</strong> {job.position_type?.name}</p>
+        <p><strong>Start:</strong> {job.start_time}</p>
+        <p><strong>End:</strong> {job.end_time}</p>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          style={styles.button}
+          onClick={() => handleSetInterested(true)}
+        >
+          Invite Candidate
+        </button>
+
+        <button
+          type="button"
+          style={styles.secondaryButton}
+          onClick={() => handleSetInterested(false)}
+        >
+          Withdraw Invite
+        </button>
+
+        <button
+          type="button"
+          style={styles.secondaryButton}
+          onClick={() => navigate(`/business/jobs/${jobId}/candidates`)}
+        >
+          Back to Candidates
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BusinessJobDetailPage() {
   const { jobId } = useParams();
   const token = localStorage.getItem('token');
@@ -4085,6 +4356,14 @@ function BusinessJobDetailPage() {
           <p><strong>Note:</strong> {job.note || '(empty)'}</p>
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+            <Link to={`/business/jobs/${job.id}/candidates`} style={styles.smallButton}>
+              Candidates
+            </Link>
+
+            <Link to={`/business/jobs/${job.id}/interests`} style={styles.smallButton}>
+              Interests
+            </Link>
+
             <button
               type="button"
               style={styles.button}
@@ -4110,6 +4389,8 @@ function BusinessJobDetailPage() {
             >
               Back to My Jobs
             </button>
+
+
           </div>
 
           {!isEditable && (
@@ -4123,6 +4404,1061 @@ function BusinessJobDetailPage() {
   );
 }
 
+function AdminSystemConfigPage() {
+  const token = localStorage.getItem('token');
+  const role = getRoleFromToken();
+
+  const [resetCooldown, setResetCooldown] = useState('0');
+  const [negotiationWindow, setNegotiationWindow] = useState('900');
+  const [jobStartWindow, setJobStartWindow] = useState('168');
+  const [availabilityTimeout, setAvailabilityTimeout] = useState('300');
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  async function patchConfig(url, body, successMessage) {
+    try {
+      setLoading(true);
+      setMessage('');
+      setError('');
+
+      if (role !== 'ADMIN') {
+        throw new Error('Admin access only');
+      }
+
+      const response = await fetch(`${API_BASE}${url}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update system setting');
+      }
+
+      setMessage(successMessage);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSaveResetCooldown(event) {
+    event.preventDefault();
+    await patchConfig(
+      '/system/reset-cooldown',
+      { reset_cooldown: Number(resetCooldown) },
+      'Reset cooldown updated successfully'
+    );
+  }
+
+  async function handleSaveNegotiationWindow(event) {
+    event.preventDefault();
+    await patchConfig(
+      '/system/negotiation-window',
+      { negotiation_window: Number(negotiationWindow) },
+      'Negotiation window updated successfully'
+    );
+  }
+
+  async function handleSaveJobStartWindow(event) {
+    event.preventDefault();
+    await patchConfig(
+      '/system/job-start-window',
+      { job_start_window: Number(jobStartWindow) },
+      'Job start window updated successfully'
+    );
+  }
+
+  async function handleSaveAvailabilityTimeout(event) {
+    event.preventDefault();
+    await patchConfig(
+      '/system/availability-timeout',
+      { availability_timeout: Number(availabilityTimeout) },
+      'Availability timeout updated successfully'
+    );
+  }
+
+  return (
+    <div>
+      <h1>Admin System Configuration</h1>
+
+      <p>
+        <strong>Units:</strong> reset cooldown in seconds, negotiation window in seconds,
+        job start window in hours, availability timeout in seconds.
+      </p>
+
+      {message && <p style={{ color: 'green' }}>{message}</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      <div style={styles.list}>
+        <form
+          onSubmit={handleSaveResetCooldown}
+          style={{
+            ...styles.listCard,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <h2>Reset Cooldown</h2>
+          <label style={styles.label}>
+            Seconds
+            <input
+              type="number"
+              min="0"
+              value={resetCooldown}
+              onChange={(e) => setResetCooldown(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Reset Cooldown'}
+          </button>
+        </form>
+
+        <form
+          onSubmit={handleSaveNegotiationWindow}
+          style={{
+            ...styles.listCard,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <h2>Negotiation Window</h2>
+          <label style={styles.label}>
+            Seconds
+            <input
+              type="number"
+              min="1"
+              value={negotiationWindow}
+              onChange={(e) => setNegotiationWindow(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Negotiation Window'}
+          </button>
+        </form>
+
+        <form
+          onSubmit={handleSaveJobStartWindow}
+          style={{
+            ...styles.listCard,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <h2>Job Start Window</h2>
+          <label style={styles.label}>
+            Hours
+            <input
+              type="number"
+              min="1"
+              value={jobStartWindow}
+              onChange={(e) => setJobStartWindow(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Job Start Window'}
+          </button>
+        </form>
+
+        <form
+          onSubmit={handleSaveAvailabilityTimeout}
+          style={{
+            ...styles.listCard,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <h2>Availability Timeout</h2>
+          <label style={styles.label}>
+            Seconds
+            <input
+              type="number"
+              min="1"
+              value={availabilityTimeout}
+              onChange={(e) => setAvailabilityTimeout(e.target.value)}
+              style={styles.input}
+            />
+          </label>
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? 'Saving...' : 'Save Availability Timeout'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function BusinessJobCandidatesPage() {
+  const { jobId } = useParams();
+  const token = localStorage.getItem('token');
+
+  const [job, setJob] = useState(null);
+  const [candidates, setCandidates] = useState([]);
+  const [count, setCount] = useState(0);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
+  async function loadCandidatesPage(currentPage = page) {
+    try {
+      setLoading(true);
+      setError('');
+
+      const [jobRes, candidatesRes] = await Promise.all([
+        fetch(`${API_BASE}/jobs/${jobId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch(
+          `${API_BASE}/jobs/${jobId}/candidates?page=${currentPage}&limit=${pageSize}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        ),
+      ]);
+
+      const jobData = await jobRes.json();
+      const candidatesData = await candidatesRes.json();
+
+      if (!jobRes.ok) {
+        throw new Error(jobData.error || 'Failed to load job');
+      }
+
+      if (!candidatesRes.ok) {
+        throw new Error(candidatesData.error || 'Failed to load candidates');
+      }
+
+      setJob(jobData);
+      setCandidates(candidatesData.results || []);
+      setCount(candidatesData.count || 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadCandidatesPage(page);
+  }, [jobId, page]);
+
+  async function handleSetInterested(userId, interested) {
+    try {
+      setActionMessage('');
+      setActionError('');
+
+      const response = await fetch(`${API_BASE}/jobs/${jobId}/candidates/${userId}/interested`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ interested }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update candidate interest');
+      }
+
+      setCandidates((prev) =>
+        prev.map((candidate) =>
+          candidate.id === userId ? { ...candidate, invited: interested } : candidate
+        )
+      );
+
+      setActionMessage(
+        interested ? 'Candidate invited successfully' : 'Invitation withdrawn successfully'
+      );
+    } catch (err) {
+      setActionError(err.message);
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  if (loading) {
+    return <h1>Loading candidates...</h1>;
+  }
+
+  if (error) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>Error</h1>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1>Job Candidates</h1>
+
+      {job && (
+        <div style={styles.detailCard}>
+          <p><strong>Job ID:</strong> {job.id}</p>
+          <p><strong>Position Type:</strong> {job.position_type?.name}</p>
+          <p><strong>Status:</strong> {job.status}</p>
+          <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
+          <p><strong>Start:</strong> {job.start_time}</p>
+          <p><strong>End:</strong> {job.end_time}</p>
+        </div>
+      )}
+
+      {actionMessage && <p style={{ color: 'green' }}>{actionMessage}</p>}
+      {actionError && <p style={{ color: 'red' }}>{actionError}</p>}
+
+      <p><strong>Total Results:</strong> {count}</p>
+
+      {candidates.length === 0 ? (
+        <p>No discoverable candidates found.</p>
+      ) : (
+        <div style={styles.list}>
+          {candidates.map((candidate) => (
+            <div key={candidate.id} style={styles.listCard}>
+              <h2>
+                {candidate.first_name} {candidate.last_name}
+              </h2>
+
+              <p><strong>User ID:</strong> {candidate.id}</p>
+              <p><strong>Invited:</strong> {String(candidate.invited)}</p>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+                <Link
+                  to={`/business/jobs/${jobId}/candidates/${candidate.id}`}
+                  style={styles.smallButton}
+                >
+                  View Candidate
+                </Link>
+
+                {candidate.invited ? (
+                  <button
+                    type="button"
+                    style={styles.secondaryButton}
+                    onClick={() => handleSetInterested(candidate.id, false)}
+                  >
+                    Withdraw Invite
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    style={styles.button}
+                    onClick={() => handleSetInterested(candidate.id, true)}
+                  >
+                    Invite Candidate
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page <= 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Previous
+        </button>
+
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </button>
+      </div>
+
+      <p style={{ marginTop: '12px' }}>
+        Page {page} of {totalPages}
+      </p>
+    </div>
+  );
+}
+
+function BusinessJobInterestsPage() {
+  const { jobId } = useParams();
+  const token = localStorage.getItem('token');
+
+  const [interests, setInterests] = useState([]);
+  const [count, setCount] = useState(0);
+  const [job, setJob] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
+  async function loadInterestsPage(currentPage = page) {
+    try {
+      setLoading(true);
+      setError('');
+
+      const [jobRes, interestsRes] = await Promise.all([
+        fetch(`${API_BASE}/jobs/${jobId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch(
+          `${API_BASE}/jobs/${jobId}/interests?page=${currentPage}&limit=${pageSize}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        ),
+      ]);
+
+      const jobData = await jobRes.json();
+      const interestsData = await interestsRes.json();
+
+      if (!jobRes.ok) {
+        throw new Error(jobData.error || 'Failed to load job');
+      }
+
+      if (!interestsRes.ok) {
+        throw new Error(interestsData.error || 'Failed to load job interests');
+      }
+
+      setJob(jobData);
+      setInterests(interestsData.results || []);
+      setCount(interestsData.count || 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadInterestsPage(page);
+  }, [jobId, page]);
+
+  async function handleStartNegotiation(interestId) {
+    try {
+      setActionMessage('');
+      setActionError('');
+
+      const response = await fetch(`${API_BASE}/negotiations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          interest_id: interestId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to start negotiation');
+      }
+
+      setActionMessage(`Negotiation started successfully (ID: ${data.id})`);
+    } catch (err) {
+      setActionError(err.message);
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  if (loading) {
+    return <h1>Loading job interests...</h1>;
+  }
+
+  if (error) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>Error</h1>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1>Job Interests</h1>
+
+      {job && (
+        <div style={styles.detailCard}>
+          <p><strong>Job ID:</strong> {job.id}</p>
+          <p><strong>Position Type:</strong> {job.position_type?.name}</p>
+          <p><strong>Status:</strong> {job.status}</p>
+          <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
+          <p><strong>Start:</strong> {job.start_time}</p>
+          <p><strong>End:</strong> {job.end_time}</p>
+        </div>
+      )}
+
+      {actionMessage && <p style={{ color: 'green' }}>{actionMessage}</p>}
+      {actionError && <p style={{ color: 'red' }}>{actionError}</p>}
+
+      <p><strong>Total Results:</strong> {count}</p>
+
+      {interests.length === 0 ? (
+        <p>No user interests found for this job.</p>
+      ) : (
+        <div style={styles.list}>
+          {interests.map((interest) => (
+            <div key={interest.interest_id} style={styles.listCard}>
+              <h2>
+                {interest.user?.first_name} {interest.user?.last_name}
+              </h2>
+
+              <p><strong>Interest ID:</strong> {interest.interest_id}</p>
+              <p><strong>User ID:</strong> {interest.user?.id}</p>
+              <p><strong>Mutual Interest:</strong> {String(interest.mutual)}</p>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+                <Link
+                  to={`/business/jobs/${jobId}/candidates/${interest.user?.id}`}
+                  style={styles.smallButton}
+                >
+                  View Candidate
+                </Link>
+
+                <button
+                  type="button"
+                  style={styles.button}
+                  disabled={!interest.mutual}
+                  onClick={() => handleStartNegotiation(interest.interest_id)}
+                >
+                  Start Negotiation
+                </button>
+              </div>
+
+              {!interest.mutual && (
+                <p style={{ marginTop: '12px' }}>
+                  Negotiation can only start after mutual interest is reached.
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page <= 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Previous
+        </button>
+
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </button>
+      </div>
+
+      <p style={{ marginTop: '12px' }}>
+        Page {page} of {totalPages}
+      </p>
+    </div>
+  );
+}
+
+function MyNegotiationPage() {
+  const token = localStorage.getItem('token');
+  const role = getRoleFromToken();
+
+  const [negotiation, setNegotiation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  async function loadNegotiation() {
+    try {
+      setLoading(true);
+      setError('');
+      setActionMessage('');
+      setActionError('');
+
+      const response = await fetch(`${API_BASE}/negotiations/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 404) {
+        setNegotiation(null);
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load negotiation');
+      }
+
+      setNegotiation(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (role !== 'REGULAR' && role !== 'BUSINESS') {
+      setLoading(false);
+      setError('Negotiation page is only for regular users and businesses');
+      return;
+    }
+
+    loadNegotiation();
+  }, [token, role]);
+
+  function formatRemaining(ms) {
+    if (ms <= 0) return 'Expired';
+
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+  }
+
+  async function handleDecision(decision) {
+    try {
+      if (!negotiation) return;
+
+      setActionMessage('');
+      setActionError('');
+
+      const response = await fetch(`${API_BASE}/negotiations/me/decision`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          negotiation_id: negotiation.id,
+          decision,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update negotiation decision');
+      }
+
+      setNegotiation(data);
+      setActionMessage(`Decision recorded: ${decision}`);
+    } catch (err) {
+      setActionError(err.message);
+    }
+  }
+
+  if (loading) {
+    return <h1>Loading negotiation...</h1>;
+  }
+
+  if (error) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>Error</h1>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  if (!negotiation) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>My Negotiation</h1>
+        <p>No active negotiation.</p>
+      </div>
+    );
+  }
+
+  const expiresMs = new Date(negotiation.expiresAt).getTime();
+  const remainingMs = expiresMs - nowMs;
+  const isActive = negotiation.status === 'active' && remainingMs > 0;
+
+  const myDecision =
+    role === 'REGULAR'
+      ? negotiation.decisions?.candidate
+      : negotiation.decisions?.business;
+
+  const otherDecision =
+    role === 'REGULAR'
+      ? negotiation.decisions?.business
+      : negotiation.decisions?.candidate;
+
+  return (
+    <div style={styles.detailCard}>
+      <h1>My Negotiation</h1>
+
+      {actionMessage && <p style={{ color: 'green' }}>{actionMessage}</p>}
+      {actionError && <p style={{ color: 'red' }}>{actionError}</p>}
+
+      <p><strong>Negotiation ID:</strong> {negotiation.id}</p>
+      <p><strong>Status:</strong> {negotiation.status}</p>
+      <p><strong>Expires At:</strong> {negotiation.expiresAt}</p>
+      <p><strong>Countdown:</strong> {formatRemaining(remainingMs)}</p>
+
+      <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <h2>Job</h2>
+        <p><strong>Job ID:</strong> {negotiation.job?.id}</p>
+        <p><strong>Position Type:</strong> {negotiation.job?.position_type?.name}</p>
+        <p><strong>Business:</strong> {negotiation.job?.business?.business_name}</p>
+        <p><strong>Salary:</strong> ${negotiation.job?.salary_min} - ${negotiation.job?.salary_max}</p>
+        <p><strong>Start:</strong> {negotiation.job?.start_time}</p>
+        <p><strong>End:</strong> {negotiation.job?.end_time}</p>
+      </div>
+
+      <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <h2>Other Party</h2>
+        <p>
+          <strong>User:</strong> {negotiation.user?.first_name} {negotiation.user?.last_name}
+        </p>
+      </div>
+
+      <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <h2>Decisions</h2>
+        <p><strong>My Decision:</strong> {myDecision || 'pending'}</p>
+        <p><strong>Other Side:</strong> {otherDecision || 'pending'}</p>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+        <button
+          type="button"
+          style={styles.button}
+          disabled={!isActive}
+          onClick={() => handleDecision('accept')}
+        >
+          Accept
+        </button>
+
+        <button
+          type="button"
+          style={styles.secondaryButton}
+          disabled={!isActive}
+          onClick={() => handleDecision('decline')}
+        >
+          Decline
+        </button>
+
+        <button
+          type="button"
+          style={styles.secondaryButton}
+          onClick={loadNegotiation}
+        >
+          Refresh
+        </button>
+      </div>
+
+      {!isActive && (
+        <p style={{ marginTop: '12px' }}>
+          This negotiation is no longer active.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MyInterestsPage() {
+  const token = localStorage.getItem('token');
+
+  const [interests, setInterests] = useState([]);
+  const [count, setCount] = useState(0);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
+  async function loadInterestsPage(currentPage = page) {
+    try {
+      setLoading(true);
+      setError('');
+
+      const response = await fetch(
+        `${API_BASE}/users/me/interests?page=${currentPage}&limit=${pageSize}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load interests');
+      }
+
+      setInterests(data.results || []);
+      setCount(data.count || 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadInterestsPage(page);
+  }, [page]);
+
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  if (loading) {
+    return <h1>Loading my interests...</h1>;
+  }
+
+  if (error) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>Error</h1>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1>My Interests</h1>
+
+      <p><strong>Total Results:</strong> {count}</p>
+
+      {interests.length === 0 ? (
+        <p>No interested jobs found.</p>
+      ) : (
+        <div style={styles.list}>
+          {interests.map((interest) => (
+            <div key={interest.interest_id} style={styles.listCard}>
+              <h2>{interest.job?.position_type?.name || 'Unknown Position Type'}</h2>
+
+              <p><strong>Interest ID:</strong> {interest.interest_id}</p>
+              <p><strong>Job ID:</strong> {interest.job?.id}</p>
+              <p><strong>Status:</strong> {interest.job?.status}</p>
+              <p><strong>Business:</strong> {interest.job?.business?.business_name}</p>
+              <p><strong>Salary:</strong> ${interest.job?.salary_min} - ${interest.job?.salary_max}</p>
+              <p><strong>Start:</strong> {interest.job?.start_time}</p>
+              <p><strong>End:</strong> {interest.job?.end_time}</p>
+              <p><strong>Mutual Interest:</strong> {String(interest.mutual)}</p>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+                <Link to={`/jobs/${interest.job?.id}`} style={styles.smallButton}>
+                  View Job
+                </Link>
+
+                {interest.mutual && (
+                  <Link to="/negotiation" style={styles.smallButton}>
+                    Open Negotiation
+                  </Link>
+                )}
+              </div>
+
+              {!interest.mutual && (
+                <p style={{ marginTop: '12px' }}>
+                  Negotiation is not available until mutual interest is reached.
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page <= 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Previous
+        </button>
+
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </button>
+      </div>
+
+      <p style={{ marginTop: '12px' }}>
+        Page {page} of {totalPages}
+      </p>
+    </div>
+  );
+}
+
+function MyInvitationsPage() {
+  const token = localStorage.getItem('token');
+
+  const [invitations, setInvitations] = useState([]);
+  const [count, setCount] = useState(0);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
+  async function loadInvitationsPage(currentPage = page) {
+    try {
+      setLoading(true);
+      setError('');
+
+      const response = await fetch(
+        `${API_BASE}/users/me/invitations?page=${currentPage}&limit=${pageSize}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load invitations');
+      }
+
+      setInvitations(data.results || []);
+      setCount(data.count || 0);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadInvitationsPage(page);
+  }, [page]);
+
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+
+  if (loading) {
+    return <h1>Loading invitations...</h1>;
+  }
+
+  if (error) {
+    return (
+      <div style={styles.detailCard}>
+        <h1>Error</h1>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1>My Invitations</h1>
+
+      <p><strong>Total Results:</strong> {count}</p>
+
+      {invitations.length === 0 ? (
+        <p>No invitations found.</p>
+      ) : (
+        <div style={styles.list}>
+          {invitations.map((job) => (
+            <div key={job.id} style={styles.listCard}>
+              <h2>{job.position_type?.name || 'Unknown Position Type'}</h2>
+
+              <p><strong>Job ID:</strong> {job.id}</p>
+              <p><strong>Status:</strong> {job.status}</p>
+              <p><strong>Business:</strong> {job.business?.business_name}</p>
+              <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
+              <p><strong>Start:</strong> {job.start_time}</p>
+              <p><strong>End:</strong> {job.end_time}</p>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+                <Link to={`/jobs/${job.id}`} style={styles.smallButton}>
+                  View Job
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page <= 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Previous
+        </button>
+
+        <button
+          type="button"
+          style={styles.button}
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Next
+        </button>
+      </div>
+
+      <p style={{ marginTop: '12px' }}>
+        Page {page} of {totalPages}
+      </p>
+    </div>
+  );
+}
 
 export default function App() {
   const [authToken, setAuthToken] = useState(localStorage.getItem('token'));
@@ -4241,6 +5577,62 @@ export default function App() {
               element={
                 <ProtectedRoute authToken={authToken}>
                   <BusinessJobDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/system"
+              element={
+                <AdminRoute authToken={authToken}>
+                  <AdminSystemConfigPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/business/jobs/:jobId/candidates"
+              element={
+                <ProtectedRoute authToken={authToken}>
+                  <BusinessJobCandidatesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/business/jobs/:jobId/candidates/:userId"
+              element={
+                <ProtectedRoute authToken={authToken}>
+                  <BusinessCandidateDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/business/jobs/:jobId/interests"
+              element={
+                <ProtectedRoute authToken={authToken}>
+                  <BusinessJobInterestsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/negotiation"
+              element={
+                <ProtectedRoute authToken={authToken}>
+                  <MyNegotiationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-interests"
+              element={
+                <ProtectedRoute authToken={authToken}>
+                  <MyInterestsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-invitations"
+              element={
+                <ProtectedRoute authToken={authToken}>
+                  <MyInvitationsPage />
                 </ProtectedRoute>
               }
             />
