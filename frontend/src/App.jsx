@@ -5168,6 +5168,7 @@ function MyNegotiationPage() {
     const interval = setInterval(() => {
       setNowMs(Date.now());
     }, 1000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -5194,7 +5195,7 @@ function MyNegotiationPage() {
       setNegotiation(data);
       return data;
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to load negotiation');
       return null;
     } finally {
       if (showSpinner) setLoading(false);
@@ -5207,14 +5208,17 @@ function MyNegotiationPage() {
       setError('Negotiation page is only for regular users and businesses');
       return;
     }
+
     loadNegotiation();
   }, [token, role]);
 
   useEffect(() => {
     const currentId = negotiation?.id ?? null;
+
     if (negotiationIdRef.current !== currentId) {
       setChatMessages([]);
     }
+
     negotiationIdRef.current = currentId;
   }, [negotiation?.id]);
 
@@ -5292,9 +5296,11 @@ function MyNegotiationPage() {
 
   function formatRemaining(ms) {
     if (ms <= 0) return 'Expired';
+
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
+
     return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
   }
 
@@ -5326,7 +5332,7 @@ function MyNegotiationPage() {
       await loadNegotiation(false);
       setActionMessage(`Decision recorded: ${decision}`);
     } catch (err) {
-      setActionError(err.message);
+      setActionError(err.message || 'Failed to update negotiation decision');
     }
   }
 
@@ -5372,7 +5378,8 @@ function MyNegotiationPage() {
 
   const expiresMs = new Date(negotiation.expiresAt).getTime();
   const remainingMs = expiresMs - nowMs;
-  const isActive = negotiation.status === 'active' && remainingMs > 0;
+  const statusText = String(negotiation.status || '').toLowerCase();
+  const isActive = statusText === 'active' && remainingMs > 0;
 
   const myDecision =
     role === 'REGULAR'
