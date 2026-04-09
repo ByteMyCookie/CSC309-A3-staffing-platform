@@ -94,12 +94,15 @@ function getRoleFromToken() {
 function NavDropdown({ label, children }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
-  const location = window.location.pathname + window.location.search;
+  const location = useLocation();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     function handleDocumentClick(event) {
-      if (!containerRef.current) return;
-      if (!containerRef.current.contains(event.target)) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
         setOpen(false);
       }
     }
@@ -119,36 +122,18 @@ function NavDropdown({ label, children }) {
     };
   }, []);
 
-  useEffect(() => {
-    setOpen(false);
-  }, [location]);
-
   return (
-    <div ref={containerRef} style={{ position: 'relative' }}>
+    <div ref={containerRef} style={styles.dropdown}>
       <button
         type="button"
-        style={styles.navButton}
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
+        style={styles.navMenuButton}
+        onClick={() => setOpen((prev) => !prev)}
       >
         {label}
       </button>
 
       {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            left: 0,
-            minWidth: '220px',
-            background: '#ffffff',
-            border: '1px solid #d1d5db',
-            borderRadius: '10px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
-            padding: '8px',
-            zIndex: 1000,
-          }}
-        >
+        <div style={styles.dropdownMenu}>
           {children}
         </div>
       )}
