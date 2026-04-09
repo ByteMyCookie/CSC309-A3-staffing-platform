@@ -1,13 +1,13 @@
 Temporary Staffing Platform - INSTALL
 
 Overview
-This project has:
-- a frontend in frontend/ built with React and Vite
-- a backend in backend/ built with Node.js, Express, Prisma, and SQLite
+This project contains:
+- frontend/: React + Vite frontend
+- backend/: Node.js + Express + Prisma backend
+- SQLite database stored at backend/prisma/dev.db
 
-Package requirements
-Install:
-- Node.js 20 or newer
+Packages required
+- Node.js 20+
 - npm
 
 Local backend setup
@@ -20,39 +20,39 @@ Local backend setup
 
 Seeded admin account
 - email: admin1@csc309.utoronto.ca
-- password: 123123
+- password: Admin123!
 
 Local frontend setup
 1. cd frontend
 2. npm install
-3. create a file named .env.local with:
+3. create .env.local with:
    VITE_BACKEND_URL=http://localhost:3000
 4. npm run dev
 
-Deployed services
-- frontend: https://csc-309-a3-staffing-platform.vercel.app/
-- backend: https://csc309-a3-staffing-platform.onrender.com
-
-Deployment configuration
-
-Backend on Render
-- Root Directory: backend
-- Build Command:
-  npm install && npx prisma generate && npx prisma db push && npm run seed
-- Start Command:
-  node src/server.js $PORT
-- Environment Variable:
-  FRONTEND_ORIGIN=https://csc-309-a3-staffing-platform.vercel.app/
-
-Frontend on Vercel
+Deployment
+Frontend:
+- Platform: Vercel
 - Root Directory: frontend
 - Framework Preset: Vite
 - Environment Variable:
   VITE_BACKEND_URL=https://csc309-a3-staffing-platform.onrender.com
 
+Backend:
+- Platform: Render
+- Root Directory: backend
+- Build Command:
+  npm install && npx prisma generate && npx prisma db push && npm run seed
+- Start Command:
+  sh -c 'npx prisma db push && node prisma/seed.js && node src/server.js $PORT'
+- Environment Variable:
+  FRONTEND_ORIGIN=https://csc-309-a3-staffing-platform.vercel.app
+
+Live URLs
+- Frontend: https://csc-309-a3-staffing-platform.vercel.app
+- Backend: https://csc309-a3-staffing-platform.onrender.com
+- Health check: https://csc309-a3-staffing-platform.onrender.com/health
+
 Notes
-- The backend stores data in SQLite.
-- The backend stores uploaded files locally in uploads/.
-- On free hosting, SQLite data and uploaded files may be lost after redeploys or service resets.
-- The backend health endpoint is:
-  https://csc309-a3-staffing-platform.onrender.com/health
+- Uploaded files are stored under backend/uploads locally.
+- The backend uses SQLite.
+- On free hosting, SQLite data and uploaded files are not reliable across resets/redeploys.
