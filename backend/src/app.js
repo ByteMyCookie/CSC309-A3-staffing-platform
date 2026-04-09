@@ -3100,48 +3100,6 @@ function create_app() {
     })
     .all(methodNotAllowed);
 
-  app.route('/businesses/:businessId')
-    .get(async (req, res, next) => {
-      try {
-        const role = getOptionalRoleFromRequest(req);
-        const businessId = parsePositiveInt(req.params.businessId, 'businessId');
-
-        const account = await prisma.account.findUnique({
-          where: { id: businessId },
-          include: { business: true },
-        });
-
-        if (!account || account.role !== 'BUSINESS' || !account.business) {
-          throw notFound('Business not found');
-        }
-
-        if (role !== 'ADMIN' && (!account.activated || !account.business.verified)) {
-          throw notFound('Business not found');
-        }
-
-        const result = {
-          id: account.id,
-          business_name: account.business.businessName,
-          email: account.email,
-          role: roleToApi(account.role),
-          phone_number: account.business.phoneNumber,
-          postal_address: account.business.postalAddress,
-          biography: account.business.biography,
-        };
-
-        if (role === 'ADMIN') {
-          result.owner_name = account.business.ownerName;
-          result.verified = account.business.verified;
-          result.activated = account.activated;
-        }
-
-        res.status(200).json(result);
-      } catch (err) {
-        next(err);
-      }
-    })
-    .all(methodNotAllowed);
-
   app.route('/auth/resets')
     .post(async (req, res, next) => {
       try {
@@ -3223,6 +3181,49 @@ function create_app() {
       }
     })
     .all(methodNotAllowed);
+
+  app.route('/businesses/:businessId')
+    .get(async (req, res, next) => {
+      try {
+        const role = getOptionalRoleFromRequest(req);
+        const businessId = parsePositiveInt(req.params.businessId, 'businessId');
+
+        const account = await prisma.account.findUnique({
+          where: { id: businessId },
+          include: { business: true },
+        });
+
+        if (!account || account.role !== 'BUSINESS' || !account.business) {
+          throw notFound('Business not found');
+        }
+
+        if (role !== 'ADMIN' && (!account.activated || !account.business.verified)) {
+          throw notFound('Business not found');
+        }
+
+        const result = {
+          id: account.id,
+          business_name: account.business.businessName,
+          email: account.email,
+          role: roleToApi(account.role),
+          phone_number: account.business.phoneNumber,
+          postal_address: account.business.postalAddress,
+          biography: account.business.biography,
+        };
+
+        if (role === 'ADMIN') {
+          result.owner_name = account.business.ownerName;
+          result.verified = account.business.verified;
+          result.activated = account.activated;
+        }
+
+        res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    })
+    .all(methodNotAllowed);
+
 
   app.route('/position-types')
     .get(requireAuth, requireRole('REGULAR', 'BUSINESS', 'ADMIN'), async (req, res, next) => {
