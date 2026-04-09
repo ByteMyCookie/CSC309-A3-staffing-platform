@@ -3,6 +3,13 @@ import { BrowserRouter, Routes, Route, Link, useParams, Navigate, useNavigate, u
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
+function formatDateTime(value) {
+  if (!value) return 'N/A';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString();
+}
+
 function getRoleFromToken() {
   const token = localStorage.getItem('token');
   if (!token) return null;
@@ -299,7 +306,15 @@ function LoginPage({ onLogin }) {
       localStorage.setItem('token', data.token);
       onLogin(data.token);
       setMessage('Login successful');
-      console.log('Login response:', data);
+
+      const role = JSON.parse(atob(data.token.split('.')[1])).role;
+      if (role === 'ADMIN') {
+        navigate('/admin/businesses');
+      } else if (role === 'BUSINESS') {
+        navigate('/business/jobs');
+      } else {
+        navigate('/me');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -451,7 +466,7 @@ function RegisterUserPage() {
             <p><strong>Email:</strong> {successData.email}</p>
             <p><strong>Activated:</strong> {String(successData.activated)}</p>
             <p><strong>Reset Token:</strong> {successData.resetToken}</p>
-            <p><strong>Expires At:</strong> {successData.expiresAt}</p>
+            <p><strong>Expires At:</strong> {formatDateTime(successData.expiresAt)}</p>
 
             <Link
               to={`/activate?email=${encodeURIComponent(successData.email)}&token=${encodeURIComponent(successData.resetToken)}`}
@@ -578,7 +593,7 @@ function RegisterBusinessPage() {
             <p><strong>Activated:</strong> {String(successData.activated)}</p>
             <p><strong>Verified:</strong> {String(successData.verified)}</p>
             <p><strong>Reset Token:</strong> {successData.resetToken}</p>
-            <p><strong>Expires At:</strong> {successData.expiresAt}</p>
+            <p><strong>Expires At:</strong> {formatDateTime(successData.expiresAt)}</p>
 
             <Link
               to={`/activate?email=${encodeURIComponent(successData.email)}&token=${encodeURIComponent(successData.resetToken)}`}
@@ -1339,7 +1354,7 @@ function ForgotPasswordPage() {
         {successData && (
           <div style={styles.successBox}>
             <p><strong>Reset token created.</strong></p>
-            <p><strong>Expires At:</strong> {successData.expiresAt}</p>
+            <p><strong>Expires At:</strong> {formatDateTime(successData.expiresAt)}</p>
             <p><strong>Reset Token:</strong> {successData.resetToken}</p>
 
             <Link
@@ -2010,7 +2025,7 @@ function QualificationDetailPage() {
       <p><strong>ID:</strong> {qualification.id}</p>
       <p><strong>Status:</strong> {qualification.status}</p>
       <p><strong>Position Type:</strong> {qualification.position_type?.name}</p>
-      <p><strong>Updated At:</strong> {qualification.updatedAt}</p>
+      <p><strong>Updated At:</strong> {formatDateTime(qualification.updatedAt)}</p>
 
       {qualification.document ? (
         <p>
@@ -2197,8 +2212,8 @@ function RegularJobsPage() {
             <p><strong>Business:</strong> {job.business?.business_name}</p>
             <p><strong>Status:</strong> {job.status}</p>
             <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
-            <p><strong>Start:</strong> {job.start_time}</p>
-            <p><strong>End:</strong> {job.end_time}</p>
+            <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+            <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
             <Link to={`/jobs/${job.id}`} style={styles.smallButton}>
               View Job
             </Link>
@@ -2329,8 +2344,8 @@ function RegularJobDetailPage() {
       <p><strong>Status:</strong> {job.status}</p>
       <p><strong>Business:</strong> {job.business?.business_name}</p>
       <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
-      <p><strong>Start:</strong> {job.start_time}</p>
-      <p><strong>End:</strong> {job.end_time}</p>
+      <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+      <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
       <p><strong>Note:</strong> {job.note || '(empty)'}</p>
 
       {typeof job.distance !== 'undefined' && (
@@ -2482,7 +2497,7 @@ function MyQualificationsPage() {
               <div key={qualification.id} style={styles.listCard}>
                 <h2>{qualification.position_type?.name || 'Unknown Position Type'}</h2>
                 <p><strong>Status:</strong> {qualification.status}</p>
-                <p><strong>Updated:</strong> {qualification.updatedAt || qualification.updated_at}</p>
+                <p><strong>Updated:</strong> {formatDateTime(qualification.updatedAt || qualification.updated_at)}</p>
 
                 {qualification.note && (
                   <p><strong>Note:</strong> {qualification.note}</p>
@@ -2706,7 +2721,7 @@ function AdminQualificationsPage() {
               </p>
               <p><strong>Qualification ID:</strong> {qualification.id}</p>
               <p><strong>Status:</strong> {qualification.status}</p>
-              <p><strong>Updated:</strong> {qualification.updatedAt || qualification.updated_at}</p>
+              <p><strong>Updated:</strong> {formatDateTime(qualification.updatedAt || qualification.updated_at)}</p>
 
               {qualification.note && (
                 <p><strong>Note:</strong> {qualification.note}</p>
@@ -3887,8 +3902,8 @@ function BusinessJobsPage() {
               <p><strong>Job ID:</strong> {job.id}</p>
               <p><strong>Status:</strong> {job.status}</p>
               <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
-              <p><strong>Start:</strong> {job.start_time}</p>
-              <p><strong>End:</strong> {job.end_time}</p>
+              <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+              <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
 
               {job.worker ? (
                 <p>
@@ -4101,8 +4116,8 @@ function BusinessCandidateDetailPage() {
         <p><strong>Job ID:</strong> {job.id}</p>
         <p><strong>Status:</strong> {job.status}</p>
         <p><strong>Position Type:</strong> {job.position_type?.name}</p>
-        <p><strong>Start:</strong> {job.start_time}</p>
-        <p><strong>End:</strong> {job.end_time}</p>
+        <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+        <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
       </div>
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -4471,8 +4486,8 @@ function BusinessJobDetailPage() {
           <p><strong>Position Type:</strong> {job.position_type?.name}</p>
           <p><strong>Status:</strong> {job.status}</p>
           <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
-          <p><strong>Start:</strong> {job.start_time}</p>
-          <p><strong>End:</strong> {job.end_time}</p>
+          <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+          <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
 
           {job.worker ? (
             <p>
@@ -4853,8 +4868,8 @@ function BusinessJobCandidatesPage() {
           <p><strong>Position Type:</strong> {job.position_type?.name}</p>
           <p><strong>Status:</strong> {job.status}</p>
           <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
-          <p><strong>Start:</strong> {job.start_time}</p>
-          <p><strong>End:</strong> {job.end_time}</p>
+          <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+          <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
         </div>
       )}
 
@@ -5049,8 +5064,8 @@ function BusinessJobInterestsPage() {
           <p><strong>Position Type:</strong> {job.position_type?.name}</p>
           <p><strong>Status:</strong> {job.status}</p>
           <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
-          <p><strong>Start:</strong> {job.start_time}</p>
-          <p><strong>End:</strong> {job.end_time}</p>
+          <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+          <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
         </div>
       )}
 
@@ -5276,7 +5291,7 @@ function MyNegotiationPage() {
 
       <p><strong>Negotiation ID:</strong> {negotiation.id}</p>
       <p><strong>Status:</strong> {negotiation.status}</p>
-      <p><strong>Expires At:</strong> {negotiation.expiresAt}</p>
+      <p><strong>Expires At:</strong> {formatDateTime(negotiation.expiresAt)}</p>
       <p><strong>Countdown:</strong> {formatRemaining(remainingMs)}</p>
 
       <div style={{ marginTop: '20px', marginBottom: '20px' }}>
@@ -5285,8 +5300,8 @@ function MyNegotiationPage() {
         <p><strong>Position Type:</strong> {negotiation.job?.position_type?.name}</p>
         <p><strong>Business:</strong> {negotiation.job?.business?.business_name}</p>
         <p><strong>Salary:</strong> ${negotiation.job?.salary_min} - ${negotiation.job?.salary_max}</p>
-        <p><strong>Start:</strong> {negotiation.job?.start_time}</p>
-        <p><strong>End:</strong> {negotiation.job?.end_time}</p>
+        <p><strong>Start:</strong> {formatDateTime(negotiation.job?.start_time)}</p>
+        <p><strong>End:</strong> {formatDateTime(negotiation.job?.end_time)}</p>
       </div>
 
       <div style={{ marginTop: '20px', marginBottom: '20px' }}>
@@ -5418,8 +5433,8 @@ function MyInterestsPage() {
               <p><strong>Status:</strong> {interest.job?.status}</p>
               <p><strong>Business:</strong> {interest.job?.business?.business_name}</p>
               <p><strong>Salary:</strong> ${interest.job?.salary_min} - ${interest.job?.salary_max}</p>
-              <p><strong>Start:</strong> {interest.job?.start_time}</p>
-              <p><strong>End:</strong> {interest.job?.end_time}</p>
+              <p><strong>Start:</strong> {formatDateTime(interest.job?.start_time)}</p>
+              <p><strong>End:</strong> {formatDateTime(interest.job?.end_time)}</p>
               <p><strong>Mutual Interest:</strong> {String(interest.mutual)}</p>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
@@ -5549,8 +5564,8 @@ function MyInvitationsPage() {
               <p><strong>Status:</strong> {job.status}</p>
               <p><strong>Business:</strong> {job.business?.business_name}</p>
               <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
-              <p><strong>Start:</strong> {job.start_time}</p>
-              <p><strong>End:</strong> {job.end_time}</p>
+              <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
+              <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
                 <Link to={`/jobs/${job.id}`} style={styles.smallButton}>
@@ -5763,6 +5778,15 @@ export default function App() {
                 <ProtectedRoute authToken={authToken}>
                   <MyInvitationsPage />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <div style={styles.detailCard}>
+                  <h1>Page Not Found</h1>
+                  <p>The page you requested does not exist.</p>
+                </div>
               }
             />
           </Routes>
