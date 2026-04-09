@@ -20,7 +20,7 @@ Local backend setup
 
 Seeded admin account
 - email: admin1@csc309.utoronto.ca
-- password: Admin123!
+- password: 123123
 
 Local frontend setup
 1. cd frontend
