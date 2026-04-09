@@ -258,8 +258,8 @@ function Navbar({ authToken, onLogout }) {
 
 function HomePage() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <section style={styles.detailCard}>
+    <div>
+      <div style={styles.detailCard}>
         <h1>Temporary Staffing Platform</h1>
         <p>
           Find qualified short-term staff, manage job postings, review qualifications,
@@ -267,66 +267,102 @@ function HomePage() {
         </p>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
-          <Link to="/login" style={styles.smallButton}>
-            Login
-          </Link>
-
-          <Link to="/register/user" style={styles.smallButton}>
-            Register as User
-          </Link>
-
-          <Link to="/register/business" style={styles.smallButton}>
-            Register as Business
-          </Link>
-
-          <Link to="/businesses" style={styles.smallButton}>
-            Browse Businesses
-          </Link>
+          <Link to="/login" style={styles.button}>Login</Link>
+          <Link to="/register" style={styles.secondaryButton}>Register as User</Link>
+          <Link to="/register-business" style={styles.secondaryButton}>Register as Business</Link>
+          <Link to="/businesses" style={styles.secondaryButton}>Browse Businesses</Link>
         </div>
-      </section>
+      </div>
 
-      <section style={styles.list}>
-        <div style={styles.listCard}>
-          <h2>For Regular Users</h2>
-          <p>Build a profile, upload documents, request qualifications, browse matching jobs, and manage invitations and negotiations.</p>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            <li>Request and revise qualifications</li>
-            <li>Browse jobs you qualify for</li>
-            <li>Track invitations and interests</li>
-            <li>Respond to negotiation decisions</li>
-          </ul>
+      <div style={styles.detailCard}>
+        <h2>Demo Accounts for Grading</h2>
+        <p>
+          These seeded accounts make it easy to test major workflows quickly.
+        </p>
+
+        <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
+          <div style={styles.listCard}>
+            <h3>Administrator</h3>
+            <p><strong>Email:</strong> admin1@csc309.utoronto.ca</p>
+            <p><strong>Password:</strong> 123123</p>
+            <p>Use this account to verify businesses, review qualifications, manage users, position types, and system settings.</p>
+          </div>
+
+          <div style={styles.listCard}>
+            <h3>Business</h3>
+            <p><strong>Email:</strong> business1@csc309.utoronto.ca</p>
+            <p><strong>Password:</strong> 123123</p>
+            <p>Use this account to review candidates, manage jobs, track interests, and test negotiation flows.</p>
+          </div>
+
+          <div style={styles.listCard}>
+            <h3>Regular User</h3>
+            <p><strong>Email:</strong> regular2@csc309.utoronto.ca</p>
+            <p><strong>Password:</strong> 123123</p>
+            <p>Use this account to test job browsing, interests, invitations, and the seeded active negotiation with business1.</p>
+          </div>
         </div>
+      </div>
 
-        <div style={styles.listCard}>
-          <h2>For Businesses</h2>
-          <p>Create job postings, review candidates, invite users, track interests, and manage negotiations for open roles.</p>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            <li>Create and manage jobs</li>
-            <li>Review discoverable candidates</li>
-            <li>Invite qualified users</li>
-            <li>Start and monitor negotiations</li>
-          </ul>
-        </div>
+      <div style={styles.detailCard}>
+        <h2>Recommended Grader Path</h2>
+        <ol style={{ paddingLeft: '20px', lineHeight: 1.8 }}>
+          <li>Log in as admin to review qualifications, businesses, users, position types, and system settings.</li>
+          <li>Log in as business1 to inspect jobs, candidate discovery, interests, and negotiation actions.</li>
+          <li>Log in as regular2 to inspect jobs, qualifications, invitations, interests, and the active negotiation page.</li>
+          <li>Open the negotiation page on both business1 and regular2 to test live chat, countdown, and accept or decline flow.</li>
+        </ol>
+      </div>
 
-        <div style={styles.listCard}>
-          <h2>For Administrators</h2>
-          <p>Moderate platform activity by reviewing users, businesses, qualifications, position types, and system-wide settings.</p>
-          <ul style={{ margin: 0, paddingLeft: '20px' }}>
-            <li>Approve or reject qualifications</li>
-            <li>Verify businesses</li>
-            <li>Suspend users</li>
-            <li>Adjust platform configuration</li>
-          </ul>
-        </div>
-      </section>
+      <div style={styles.detailCard}>
+        <h2>For Regular Users</h2>
+        <p>
+          Build a profile, upload documents, request qualifications, browse matching jobs,
+          and manage invitations and negotiations.
+        </p>
+        <ul>
+          <li>Request and revise qualifications</li>
+          <li>Browse jobs you qualify for</li>
+          <li>Track invitations and interests</li>
+          <li>Respond to negotiation decisions</li>
+        </ul>
+      </div>
 
-      <section style={styles.detailCard}>
+      <div style={styles.detailCard}>
+        <h2>For Businesses</h2>
+        <p>
+          Create job postings, review candidates, invite users, track interests,
+          and manage negotiations for open roles.
+        </p>
+        <ul>
+          <li>Create and manage jobs</li>
+          <li>Review discoverable candidates</li>
+          <li>Invite qualified users</li>
+          <li>Start and monitor negotiations</li>
+        </ul>
+      </div>
+
+      <div style={styles.detailCard}>
+        <h2>For Administrators</h2>
+        <p>
+          Moderate platform activity by reviewing users, businesses, qualifications,
+          position types, and system-wide settings.
+        </p>
+        <ul>
+          <li>Approve or reject qualifications</li>
+          <li>Verify businesses</li>
+          <li>Suspend users</li>
+          <li>Adjust platform configuration</li>
+        </ul>
+      </div>
+
+      <div style={styles.detailCard}>
         <h2>Platform Status Visibility</h2>
         <p>
-          The interface is designed to make system state visible, including qualification status,
-          job status, invitations, mutual interest, and active negotiation windows.
+          The interface is designed to make system state visible, including qualification
+          status, job status, invitations, mutual interest, and active negotiation windows.
         </p>
-      </section>
+      </div>
     </div>
   );
 }
