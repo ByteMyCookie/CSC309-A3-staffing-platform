@@ -11,6 +11,62 @@ function formatDateTime(value) {
   return d.toLocaleString();
 }
 
+function normalizeStatus(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function getStatusBadgeStyle(value) {
+  const status = normalizeStatus(value);
+
+  const base = {
+    display: 'inline-block',
+    padding: '4px 10px',
+    borderRadius: '999px',
+    fontSize: '0.85rem',
+    fontWeight: 700,
+    textTransform: 'capitalize',
+    border: '1px solid transparent',
+  };
+
+  if (['approved', 'success', 'verified', 'active', 'open', 'available'].includes(status)) {
+    return {
+      ...base,
+      background: '#dcfce7',
+      color: '#166534',
+      borderColor: '#86efac',
+    };
+  }
+
+  if (['pending', 'submitted', 'revised'].includes(status)) {
+    return {
+      ...base,
+      background: '#fef3c7',
+      color: '#92400e',
+      borderColor: '#fcd34d',
+    };
+  }
+
+  if (['rejected', 'failed', 'declined', 'canceled', 'cancelled', 'expired', 'suspended', 'filled', 'completed', 'hidden'].includes(status)) {
+    return {
+      ...base,
+      background: '#fee2e2',
+      color: '#991b1b',
+      borderColor: '#fca5a5',
+    };
+  }
+
+  return {
+    ...base,
+    background: '#e5e7eb',
+    color: '#374151',
+    borderColor: '#d1d5db',
+  };
+}
+
+function StatusBadge({ value }) {
+  return <span style={getStatusBadgeStyle(value)}>{String(value || 'unknown')}</span>;
+}
+
 function getRoleFromToken() {
   const token = localStorage.getItem('token');
   if (!token) return null;
@@ -5405,7 +5461,7 @@ function MyNegotiationPage() {
       {socketError && <p style={{ color: 'red' }}>{socketError}</p>}
 
       <p><strong>Negotiation ID:</strong> {negotiation.id}</p>
-      <p><strong>Status:</strong> {negotiation.status}</p>
+      <p><strong>Status:</strong> <StatusBadge value={negotiation.status} /></p>
       <p><strong>Socket:</strong> {socketState}</p>
       <p><strong>Expires At:</strong> {formatDateTime(negotiation.expiresAt)}</p>
       <p><strong>Countdown:</strong> {formatRemaining(remainingMs)}</p>
@@ -5427,8 +5483,8 @@ function MyNegotiationPage() {
 
       <div style={{ marginTop: '20px', marginBottom: '20px' }}>
         <h2>Decisions</h2>
-        <p><strong>My Decision:</strong> {myDecision || 'pending'}</p>
-        <p><strong>Other Side:</strong> {otherDecision || 'pending'}</p>
+        <p><strong>My Decision:</strong> <StatusBadge value={myDecision || 'pending'} /></p>
+        <p><strong>Other Side:</strong> <StatusBadge value={otherDecision || 'pending'} /></p>
       </div>
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
