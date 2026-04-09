@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, useParams, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Link,
+  useParams,
+  Navigate,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from 'react-router-dom';
+
 import { io } from 'socket.io-client';
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
@@ -79,9 +91,72 @@ function getRoleFromToken() {
   }
 }
 
-function Navbar({ authToken, onLogout }) {
-  const [openMenu, setOpenMenu] = useState(null);
+function NavDropdown({ label, children }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  const location = window.location.pathname + window.location.search;
 
+  useEffect(() => {
+    function handleDocumentClick(event) {
+      if (!containerRef.current) return;
+      if (!containerRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location]);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        style={styles.navButton}
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
+        {label}
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: 0,
+            minWidth: '220px',
+            background: '#ffffff',
+            border: '1px solid #d1d5db',
+            borderRadius: '10px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+            padding: '8px',
+            zIndex: 1000,
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Navbar({ authToken, onLogout }) {
   const isLoggedIn = Boolean(authToken);
   const role = authToken ? getRoleFromToken() : null;
 
@@ -95,155 +170,54 @@ function Navbar({ authToken, onLogout }) {
     window.location.href = '/';
   }
 
-  function toggleMenu(menuName) {
-    setOpenMenu((prev) => (prev === menuName ? null : menuName));
-  }
-
-  function closeMenus() {
-    setOpenMenu(null);
-  }
-
   return (
     <nav style={styles.nav}>
       <div style={styles.navLeft}>
-        <Link to="/" style={styles.link} onClick={closeMenus}>
+        <Link to="/" style={styles.link}>
           Home
         </Link>
 
-        <div style={styles.dropdown}>
-          <button
-            type="button"
-            style={styles.navMenuButton}
-            onClick={() => toggleMenu('public')}
-          >
-            Public
-          </button>
-
-          {openMenu === 'public' && (
-            <div style={styles.dropdownMenu}>
-              <Link to="/businesses" style={styles.dropdownItem} onClick={closeMenus}>
-                Businesses
-              </Link>
-              <Link to="/login" style={styles.dropdownItem} onClick={closeMenus}>
-                Login
-              </Link>
-              <Link to="/register/user" style={styles.dropdownItem} onClick={closeMenus}>
-                Register User
-              </Link>
-              <Link to="/register/business" style={styles.dropdownItem} onClick={closeMenus}>
-                Register Business
-              </Link>
-              <Link to="/activate" style={styles.dropdownItem} onClick={closeMenus}>
-                Activate
-              </Link>
-              <Link to="/forgot-password" style={styles.dropdownItem} onClick={closeMenus}>
-                Forgot Password
-              </Link>
-            </div>
-          )}
-        </div>
+        <NavDropdown label="Public">
+          <Link to="/businesses" style={styles.navMenuLink}>Businesses</Link>
+          <Link to="/login" style={styles.navMenuLink}>Login</Link>
+          <Link to="/register/user" style={styles.navMenuLink}>Register User</Link>
+          <Link to="/register/business" style={styles.navMenuLink}>Register Business</Link>
+        </NavDropdown>
 
         {isRegular && (
-          <div style={styles.dropdown}>
-            <button
-              type="button"
-              style={styles.navMenuButton}
-              onClick={() => toggleMenu('regular')}
-            >
-              Regular
-            </button>
-
-            {openMenu === 'regular' && (
-              <div style={styles.dropdownMenu}>
-                <Link to="/me" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Account
-                </Link>
-                <Link to="/position-types" style={styles.dropdownItem} onClick={closeMenus}>
-                  Position Types
-                </Link>
-                <Link to="/jobs" style={styles.dropdownItem} onClick={closeMenus}>
-                  Jobs
-                </Link>
-                <Link to="/qualifications" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Qualifications
-                </Link>
-                <Link to="/my-interests" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Interests
-                </Link>
-                <Link to="/my-invitations" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Invitations
-                </Link>
-                <Link to="/negotiation" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Negotiation
-                </Link>
-              </div>
-            )}
-          </div>
+          <NavDropdown label="Regular">
+            <Link to="/me" style={styles.navMenuLink}>My Account</Link>
+            <Link to="/jobs" style={styles.navMenuLink}>Jobs</Link>
+            <Link to="/qualifications" style={styles.navMenuLink}>Qualifications</Link>
+            <Link to="/my-interests" style={styles.navMenuLink}>Interests</Link>
+            <Link to="/my-invitations" style={styles.navMenuLink}>Invitations</Link>
+            <Link to="/negotiation" style={styles.navMenuLink}>Negotiation</Link>
+          </NavDropdown>
         )}
 
         {isBusiness && (
-          <div style={styles.dropdown}>
-            <button
-              type="button"
-              style={styles.navMenuButton}
-              onClick={() => toggleMenu('business')}
-            >
-              Business
-            </button>
-
-            {openMenu === 'business' && (
-              <div style={styles.dropdownMenu}>
-                <Link to="/me" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Account
-                </Link>
-                <Link to="/business/jobs" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Jobs
-                </Link>
-                <Link to="/negotiation" style={styles.dropdownItem} onClick={closeMenus}>
-                  My Negotiation
-                </Link>
-              </div>
-            )}
-          </div>
+          <NavDropdown label="Business">
+            <Link to="/me" style={styles.navMenuLink}>My Account</Link>
+            <Link to="/business/jobs" style={styles.navMenuLink}>My Jobs</Link>
+            <Link to="/negotiation" style={styles.navMenuLink}>Negotiation</Link>
+          </NavDropdown>
         )}
 
         {isAdmin && (
-          <div style={styles.dropdown}>
-            <button
-              type="button"
-              style={styles.navMenuButton}
-              onClick={() => toggleMenu('admin')}
-            >
-              Admin
-            </button>
-
-            {openMenu === 'admin' && (
-              <div style={styles.dropdownMenu}>
-                <Link to="/admin/businesses" style={styles.dropdownItem} onClick={closeMenus}>
-                  Businesses
-                </Link>
-                <Link to="/admin/qualifications" style={styles.dropdownItem} onClick={closeMenus}>
-                  Qualifications
-                </Link>
-                <Link to="/admin/users" style={styles.dropdownItem} onClick={closeMenus}>
-                  Users
-                </Link>
-                <Link to="/admin/position-types" style={styles.dropdownItem} onClick={closeMenus}>
-                  Position Types
-                </Link>
-                <Link to="/admin/system" style={styles.dropdownItem} onClick={closeMenus}>
-                  System
-                </Link>
-              </div>
-            )}
-          </div>
+          <NavDropdown label="Admin">
+            <Link to="/admin/users" style={styles.navMenuLink}>Users</Link>
+            <Link to="/admin/businesses" style={styles.navMenuLink}>Businesses</Link>
+            <Link to="/admin/qualifications" style={styles.navMenuLink}>Qualifications</Link>
+            <Link to="/admin/position-types" style={styles.navMenuLink}>Position Types</Link>
+            <Link to="/admin/system" style={styles.navMenuLink}>System</Link>
+          </NavDropdown>
         )}
       </div>
 
       <div style={styles.navRight}>
         {isLoggedIn && (
           <>
-            <Link to="/me" style={styles.link} onClick={closeMenus}>
+            <Link to="/me" style={styles.link}>
               Account
             </Link>
             <button onClick={handleLogout} style={styles.logoutButton}>
@@ -268,8 +242,8 @@ function HomePage() {
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
           <Link to="/login" style={styles.button}>Login</Link>
-          <Link to="/register" style={styles.secondaryButton}>Register as User</Link>
-          <Link to="/register-business" style={styles.secondaryButton}>Register as Business</Link>
+          <Link to="/register/user" style={styles.secondaryButton}>Register as User</Link>
+          <Link to="/register/business" style={styles.secondaryButton}>Register as Business</Link>
           <Link to="/businesses" style={styles.secondaryButton}>Browse Businesses</Link>
         </div>
       </div>
@@ -894,9 +868,8 @@ function AdminBusinessesPage() {
   const [activatedFilter, setActivatedFilter] = useState('');
   const [page, setPage] = useState(1);
 
-  const token = localStorage.getItem('token');
-  const role = getRoleFromToken();
   const pageSize = 5;
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
     async function loadBusinesses() {
@@ -904,6 +877,7 @@ function AdminBusinessesPage() {
         setLoading(true);
         setError('');
 
+        const role = getRoleFromToken();
         if (role !== 'ADMIN') {
           throw new Error('Admin access only');
         }
@@ -929,8 +903,9 @@ function AdminBusinessesPage() {
     }
 
     loadBusinesses();
-  }, [token, role]);
+  }, [token]);
 
+  // Reset to first page when filters change
   useEffect(() => {
     setPage(1);
   }, [search, verifiedFilter, activatedFilter]);
@@ -955,10 +930,9 @@ function AdminBusinessesPage() {
         throw new Error(data.error || 'Failed to update verification');
       }
 
+      // Update state locally
       setBusinesses((prev) =>
-        prev.map((business) =>
-          business.id === businessId ? { ...business, verified } : business
-        )
+        prev.map((b) => (b.id === businessId ? { ...b, verified } : b))
       );
 
       setActionMessage(
@@ -970,20 +944,19 @@ function AdminBusinessesPage() {
   }
 
   const filteredBusinesses = businesses.filter((business) => {
+    const term = search.toLowerCase();
+    
+    // Robust search: handle nulls by defaulting to empty strings
     const matchesSearch =
-      business.business_name?.toLowerCase().includes(search.toLowerCase()) ||
-      business.email?.toLowerCase().includes(search.toLowerCase()) ||
-      business.owner_name?.toLowerCase().includes(search.toLowerCase());
+      (business.business_name || '').toLowerCase().includes(term) ||
+      (business.email || '').toLowerCase().includes(term) ||
+      (business.owner_name || '').toLowerCase().includes(term);
 
     const matchesVerified =
-      verifiedFilter === ''
-        ? true
-        : String(business.verified) === verifiedFilter;
+      verifiedFilter === '' ? true : String(business.verified) === verifiedFilter;
 
     const matchesActivated =
-      activatedFilter === ''
-        ? true
-        : String(business.activated) === activatedFilter;
+      activatedFilter === '' ? true : String(business.activated) === activatedFilter;
 
     return matchesSearch && matchesVerified && matchesActivated;
   });
@@ -998,9 +971,7 @@ function AdminBusinessesPage() {
     page * pageSize
   );
 
-  if (loading) {
-    return <h1>Loading admin businesses...</h1>;
-  }
+  if (loading) return <h1>Loading admin businesses...</h1>;
 
   if (error) {
     return (
@@ -1015,8 +986,8 @@ function AdminBusinessesPage() {
     <div>
       <h1>Admin Businesses</h1>
 
-      {actionMessage && <p style={{ color: 'green' }}>{actionMessage}</p>}
-      {actionError && <p style={{ color: 'red' }}>{actionError}</p>}
+      {actionMessage && <p style={{ color: 'green', fontWeight: 'bold' }}>{actionMessage}</p>}
+      {actionError && <p style={{ color: 'red', fontWeight: 'bold' }}>{actionError}</p>}
 
       <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <label style={styles.label}>
@@ -1026,7 +997,7 @@ function AdminBusinessesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={styles.input}
-            placeholder="Business name, email, or owner"
+            placeholder="Name, email, or owner"
           />
         </label>
 
@@ -1065,21 +1036,24 @@ function AdminBusinessesPage() {
         <div style={styles.list}>
           {visibleBusinesses.map((business) => (
             <div key={business.id} style={styles.listCard}>
-              <h2>{business.business_name}</h2>
+              <h2>{business.business_name || 'Unnamed Business'}</h2>
               <p><strong>Email:</strong> {business.email}</p>
-              {business.owner_name && <p><strong>Owner Name:</strong> {business.owner_name}</p>}
-              <p>
+              {business.owner_name && (
+                <p><strong>Owner:</strong> {business.owner_name}</p>
+              )}
+              
+              <div style={{ margin: '8px 0' }}>
                 <strong>Activated:</strong>{' '}
                 <StatusBadge value={business.activated ? 'active' : 'inactive'} />
-              </p>
-              <p>
+              </div>
+              <div style={{ margin: '8px 0' }}>
                 <strong>Verified:</strong>{' '}
                 <StatusBadge value={business.verified ? 'verified' : 'unverified'} />
-              </p>
+              </div>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
                 <Link to={`/businesses/${business.id}`} style={styles.smallButton}>
-                  View Business
+                  View Details
                 </Link>
 
                 {business.verified ? (
@@ -1096,7 +1070,7 @@ function AdminBusinessesPage() {
                     style={styles.button}
                     onClick={() => handleSetVerified(business.id, true)}
                   >
-                    Verify
+                    Verify Business
                   </button>
                 )}
               </div>
@@ -1105,7 +1079,8 @@ function AdminBusinessesPage() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+      {/* Pagination Controls */}
+      <div style={{ display: 'flex', gap: '12px', marginTop: '20px', alignItems: 'center' }}>
         <button
           type="button"
           style={styles.button}
@@ -1114,6 +1089,8 @@ function AdminBusinessesPage() {
         >
           Previous
         </button>
+
+        <span>Page {page} of {totalPages}</span>
 
         <button
           type="button"
@@ -1124,10 +1101,6 @@ function AdminBusinessesPage() {
           Next
         </button>
       </div>
-
-      <p style={{ marginTop: '12px' }}>
-        Page {page} of {totalPages}
-      </p>
     </div>
   );
 }
@@ -2138,7 +2111,7 @@ function QualificationDetailPage() {
       <h1>Qualification Detail</h1>
 
       <p><strong>ID:</strong> {qualification.id}</p>
-      <p><strong>Status:</strong> {qualification.status}</p>
+      <p><strong>Status:</strong> <StatusBadge value={qualification.status} /></p>
       <p><strong>Position Type:</strong> {qualification.position_type?.name}</p>
       <p><strong>Updated At:</strong> {formatDateTime(qualification.updatedAt)}</p>
 
@@ -2325,7 +2298,7 @@ function RegularJobsPage() {
           <div key={job.id} style={styles.listCard}>
             <h2>{job.position_type?.name}</h2>
             <p><strong>Business:</strong> {job.business?.business_name}</p>
-            <p><strong>Status:</strong> {job.status}</p>
+            <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
             <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
             <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
             <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
@@ -2456,7 +2429,7 @@ function RegularJobDetailPage() {
       <h1>{job.position_type?.name}</h1>
 
       <p><strong>Job ID:</strong> {job.id}</p>
-      <p><strong>Status:</strong> {job.status}</p>
+      <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
       <p><strong>Business:</strong> {job.business?.business_name}</p>
       <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
       <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
@@ -2611,7 +2584,7 @@ function MyQualificationsPage() {
             {visibleQualifications.map((qualification) => (
               <div key={qualification.id} style={styles.listCard}>
                 <h2>{qualification.position_type?.name || 'Unknown Position Type'}</h2>
-                <p><strong>Status:</strong> {qualification.status}</p>
+                <p><strong>Status:</strong> <StatusBadge value={qualification.status} /></p>
                 <p><strong>Updated:</strong> {formatDateTime(qualification.updatedAt || qualification.updated_at)}</p>
 
                 {qualification.note && (
@@ -2827,47 +2800,62 @@ function AdminQualificationsPage() {
         <p>No qualifications found.</p>
       ) : (
         <div style={styles.list}>
-          {visibleQualifications.map((qualification) => (
-            <div key={qualification.id} style={styles.listCard}>
-              <h2>{qualification.position_type?.name || 'Unknown Position Type'}</h2>
-              <p>
-                <strong>User:</strong>{' '}
-                {qualification.user?.first_name} {qualification.user?.last_name}
-              </p>
-              <p><strong>Qualification ID:</strong> {qualification.id}</p>
-              <p><strong>Status:</strong> {qualification.status}</p>
-              <p><strong>Updated:</strong> {formatDateTime(qualification.updatedAt || qualification.updated_at)}</p>
+          {visibleQualifications.map((qualification) => {
+            const canAdminReview = ['submitted', 'revised'].includes(
+              String(qualification.status || '').toLowerCase()
+            );
 
-              {qualification.note && (
-                <p><strong>Note:</strong> {qualification.note}</p>
-              )}
+            return (
+              <div key={qualification.id} style={styles.listCard}>
+                <h2>{qualification.position_type?.name || 'Unknown Position Type'}</h2>
+                <p>
+                  <strong>User:</strong>{' '}
+                  {qualification.user?.first_name} {qualification.user?.last_name}
+                </p>
+                <p><strong>Qualification ID:</strong> {qualification.id}</p>
+                <p><strong>Status:</strong> <StatusBadge value={qualification.status} /></p>
+                <p><strong>Updated:</strong> {formatDateTime(qualification.updatedAt || qualification.updated_at)}</p>
 
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
-                <Link
-                  to={`/qualifications/${qualification.id}`}
-                  style={styles.smallButton}
-                >
-                  View Qualification
-                </Link>
+                {qualification.note && (
+                  <p><strong>Note:</strong> {qualification.note}</p>
+                )}
 
-                <button
-                  type="button"
-                  style={styles.button}
-                  onClick={() => handleSetStatus(qualification.id, 'approved')}
-                >
-                  Approve
-                </button>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+                  <Link
+                    to={`/qualifications/${qualification.id}`}
+                    style={styles.smallButton}
+                  >
+                    View Qualification
+                  </Link>
 
-                <button
-                  type="button"
-                  style={styles.secondaryButton}
-                  onClick={() => handleSetStatus(qualification.id, 'rejected')}
-                >
-                  Reject
-                </button>
+                  {/* Conditional Action Buttons Replacement */}
+                  {canAdminReview ? (
+                    <>
+                      <button
+                        type="button"
+                        style={styles.button}
+                        onClick={() => handleSetStatus(qualification.id, 'approved')}
+                      >
+                        Approve
+                      </button>
+
+                      <button
+                        type="button"
+                        style={styles.secondaryButton}
+                        onClick={() => handleSetStatus(qualification.id, 'rejected')}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  ) : (
+                    <p style={{ opacity: 0.75, marginTop: '8px', fontSize: '0.9rem' }}>
+                      No admin action available for this status.
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -3072,7 +3060,7 @@ function AdminUsersPage() {
               <p><strong>User ID:</strong> {user.id}</p>
               <p><strong>Email:</strong> {user.email}</p>
               <p><strong>Activated:</strong> {String(user.activated)}</p>
-              <p><strong>Suspended:</strong> {String(user.suspended)}</p>
+              <p><strong>Suspended:</strong> <StatusBadge value={user.suspended ? 'suspended' : 'not suspended'} /></p>
 
               {typeof user.available !== 'undefined' && (
                 <p><strong>Available:</strong> {String(user.available)}</p>
@@ -4015,7 +4003,7 @@ function BusinessJobsPage() {
             <div key={job.id} style={styles.listCard}>
               <h2>{job.position_type?.name || 'Unknown Position Type'}</h2>
               <p><strong>Job ID:</strong> {job.id}</p>
-              <p><strong>Status:</strong> {job.status}</p>
+              <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
               <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
               <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
               <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
@@ -4229,7 +4217,7 @@ function BusinessCandidateDetailPage() {
       <div style={{ marginBottom: '24px' }}>
         <h2>Job Summary</h2>
         <p><strong>Job ID:</strong> {job.id}</p>
-        <p><strong>Status:</strong> {job.status}</p>
+        <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
         <p><strong>Position Type:</strong> {job.position_type?.name}</p>
         <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
         <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
@@ -4599,7 +4587,7 @@ function BusinessJobDetailPage() {
         <>
           <p><strong>Job ID:</strong> {job.id}</p>
           <p><strong>Position Type:</strong> {job.position_type?.name}</p>
-          <p><strong>Status:</strong> {job.status}</p>
+          <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
           <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
           <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
           <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
@@ -4981,7 +4969,7 @@ function BusinessJobCandidatesPage() {
         <div style={styles.detailCard}>
           <p><strong>Job ID:</strong> {job.id}</p>
           <p><strong>Position Type:</strong> {job.position_type?.name}</p>
-          <p><strong>Status:</strong> {job.status}</p>
+          <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
           <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
           <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
           <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
@@ -5177,7 +5165,7 @@ function BusinessJobInterestsPage() {
         <div style={styles.detailCard}>
           <p><strong>Job ID:</strong> {job.id}</p>
           <p><strong>Position Type:</strong> {job.position_type?.name}</p>
-          <p><strong>Status:</strong> {job.status}</p>
+          <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
           <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
           <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
           <p><strong>End:</strong> {formatDateTime(job.end_time)}</p>
@@ -5860,7 +5848,7 @@ function MyInvitationsPage() {
               <h2>{job.position_type?.name || 'Unknown Position Type'}</h2>
 
               <p><strong>Job ID:</strong> {job.id}</p>
-              <p><strong>Status:</strong> {job.status}</p>
+              <p><strong>Status:</strong> <StatusBadge value={job.status} /></p>
               <p><strong>Business:</strong> {job.business?.business_name}</p>
               <p><strong>Salary:</strong> ${job.salary_min} - ${job.salary_max}</p>
               <p><strong>Start:</strong> {formatDateTime(job.start_time)}</p>
@@ -6310,5 +6298,14 @@ const styles = {
     padding: '10px 12px',
     borderRadius: '6px',
     backgroundColor: 'white',
+  },
+
+  navMenuLink: {
+    display: 'block',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    color: '#111827',
+    textDecoration: 'none',
+    fontWeight: 600,
   },
 };
