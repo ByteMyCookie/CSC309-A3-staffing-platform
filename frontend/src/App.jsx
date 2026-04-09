@@ -40,7 +40,7 @@ function getStatusBadgeStyle(value) {
     border: '1px solid transparent',
   };
 
-  if (['approved', 'success', 'verified', 'active', 'open', 'available'].includes(status)) {
+  if (['approved', 'success', 'verified', 'active', 'open', 'available', 'mutual'].includes(status)) {
     return {
       ...base,
       background: '#dcfce7',
@@ -3044,11 +3044,19 @@ function AdminUsersPage() {
               </h2>
               <p><strong>User ID:</strong> {user.id}</p>
               <p><strong>Email:</strong> {user.email}</p>
-              <p><strong>Activated:</strong> {String(user.activated)}</p>
+
+              <p>
+                <strong>Activated:</strong>{' '}
+                <StatusBadge value={user.activated ? 'active' : 'inactive'} />
+              </p>
+
               <p><strong>Suspended:</strong> <StatusBadge value={user.suspended ? 'suspended' : 'not suspended'} /></p>
 
               {typeof user.available !== 'undefined' && (
-                <p><strong>Available:</strong> {String(user.available)}</p>
+                <p>
+                  <strong>Available:</strong>{' '}
+                  <StatusBadge value={user.available ? 'available' : 'unavailable'} />
+                </p>
               )}
 
               {user.biography && (
@@ -3486,7 +3494,10 @@ function AdminPositionTypesPage() {
                   <h2>{positionType.name}</h2>
                   <p><strong>Position Type ID:</strong> {positionType.id}</p>
                   <p><strong>Description:</strong> {positionType.description}</p>
-                  <p><strong>Hidden:</strong> {String(positionType.hidden)}</p>
+                  <p>
+                    <strong>Hidden:</strong>{' '}
+                    <StatusBadge value={positionType.hidden ? 'hidden' : 'visible'} />
+                  </p>
 
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
                     <button
@@ -5702,12 +5713,20 @@ function MyInterestsPage() {
 
               <p><strong>Interest ID:</strong> {interest.interest_id}</p>
               <p><strong>Job ID:</strong> {interest.job?.id}</p>
-              <p><strong>Status:</strong> {interest.job?.status}</p>
+              
+              {/* Corrected Status line */}
+              <p><strong>Status:</strong> <StatusBadge value={interest.job?.status} /></p>
+              
               <p><strong>Business:</strong> {interest.job?.business?.business_name}</p>
               <p><strong>Salary:</strong> ${interest.job?.salary_min} - ${interest.job?.salary_max}</p>
               <p><strong>Start:</strong> {formatDateTime(interest.job?.start_time)}</p>
               <p><strong>End:</strong> {formatDateTime(interest.job?.end_time)}</p>
-              <p><strong>Mutual Interest:</strong> {String(interest.mutual)}</p>
+              
+              {/* Corrected Mutual Interest line */}
+              <p>
+                <strong>Mutual Interest:</strong>{' '}
+                <StatusBadge value={interest.mutual ? 'mutual' : 'not mutual'} />
+              </p>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
                 <Link to={`/jobs/${interest.job?.id}`} style={styles.smallButton}>
