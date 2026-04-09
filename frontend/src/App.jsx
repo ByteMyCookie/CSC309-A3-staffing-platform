@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useParams, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+
+import { useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
@@ -5155,30 +5158,33 @@ function MyNegotiationPage() {
   const [actionError, setActionError] = useState('');
   const [nowMs, setNowMs] = useState(Date.now());
 
+  const [socketState, setSocketState] = useState('disconnected');
+  const [socketError, setSocketError] = useState('');
+  const [chatText, setChatText] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+
+  const socketRef = useRef(null);
+  const negotiationIdRef = useRef(null);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setNowMs(Date.now());
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
-  async function loadNegotiation() {
+  async function loadNegotiation(showSpinner = true) {
     try {
-      setLoading(true);
+      if (showSpinner) setLoading(true);
       setError('');
-      setActionMessage('');
-      setActionError('');
 
       const response = await fetch(`${API_BASE}/negotiations/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.status === 404) {
         setNegotiation(null);
-        return;
+        return null;
       }
 
       const data = await response.json();
@@ -5188,10 +5194,12 @@ function MyNegotiationPage() {
       }
 
       setNegotiation(data);
+      return data;
     } catch (err) {
       setError(err.message);
+      return null;
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
   }
 
@@ -5201,17 +5209,94 @@ function MyNegotiationPage() {
       setError('Negotiation page is only for regular users and businesses');
       return;
     }
-
     loadNegotiation();
+  }, [token, role]);
+
+  useEffect(() => {
+    const currentId = negotiation?.id ?? null;
+    if (negotiationIdRef.current !== currentId) {
+      setChatMessages([]);
+    }
+    negotiationIdRef.current = currentId;
+  }, [negotiation?.id]);
+
+  useEffect(() => {
+    if (!token || (role !== 'REGULAR' && role !== 'BUSINESS')) {
+      return;
+    }
+
+    const socket = io(API_BASE, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
+
+    socketRef.current = socket;
+    setSocketState('connecting');
+    setSocketError('');
+
+    socket.on('connect', () => {
+      setSocketState('connected');
+      setSocketError('');
+    });
+
+    socket.on('disconnect', () => {
+      setSocketState('disconnected');
+    });
+
+    socket.on('connect_error', (err) => {
+      setSocketState('error');
+      setSocketError(err?.message || 'Socket connection failed');
+    });
+
+    socket.on('negotiation:started', async (payload) => {
+      setActionMessage(
+        payload?.negotiation_id
+          ? `Negotiation started: #${payload.negotiation_id}`
+          : 'Negotiation started'
+      );
+      await loadNegotiation(false);
+    });
+
+    socket.on('negotiation:message', (payload) => {
+      if (!payload || !payload.negotiation_id) return;
+
+      const currentId = negotiationIdRef.current;
+      if (currentId && Number(payload.negotiation_id) !== Number(currentId)) {
+        return;
+      }
+
+      setChatMessages((prev) => {
+        const exists = prev.some(
+          (m) =>
+            m.negotiation_id === payload.negotiation_id &&
+            m.text === payload.text &&
+            m.createdAt === payload.createdAt &&
+            m.sender?.id === payload.sender?.id
+        );
+
+        if (exists) return prev;
+
+        return [...prev, payload].sort(
+          (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+        );
+      });
+    });
+
+    socket.on('negotiation:error', (payload) => {
+      setSocketError(payload?.message || payload?.error || 'Negotiation socket error');
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
   }, [token, role]);
 
   function formatRemaining(ms) {
     if (ms <= 0) return 'Expired';
-
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-
     return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
   }
 
@@ -5240,11 +5325,27 @@ function MyNegotiationPage() {
         throw new Error(data.error || 'Failed to update negotiation decision');
       }
 
-      setNegotiation(data);
+      await loadNegotiation(false);
       setActionMessage(`Decision recorded: ${decision}`);
     } catch (err) {
       setActionError(err.message);
     }
+  }
+
+  function handleSendMessage(event) {
+    event.preventDefault();
+
+    if (!socketRef.current || !negotiation) return;
+
+    const text = chatText.trim();
+    if (!text) return;
+
+    socketRef.current.emit('negotiation:message', {
+      negotiation_id: negotiation.id,
+      text,
+    });
+
+    setChatText('');
   }
 
   if (loading) {
@@ -5265,6 +5366,8 @@ function MyNegotiationPage() {
       <div style={styles.detailCard}>
         <h1>My Negotiation</h1>
         <p>No active negotiation.</p>
+        <p>Socket: {socketState}</p>
+        {socketError && <p style={{ color: 'red' }}>{socketError}</p>}
       </div>
     );
   }
@@ -5283,15 +5386,22 @@ function MyNegotiationPage() {
       ? negotiation.decisions?.business
       : negotiation.decisions?.candidate;
 
+  const otherParty =
+    role === 'REGULAR'
+      ? negotiation.job?.business?.business_name || 'Business'
+      : `${negotiation.user?.first_name || ''} ${negotiation.user?.last_name || ''}`.trim() || 'User';
+
   return (
     <div style={styles.detailCard}>
       <h1>My Negotiation</h1>
 
       {actionMessage && <p style={{ color: 'green' }}>{actionMessage}</p>}
       {actionError && <p style={{ color: 'red' }}>{actionError}</p>}
+      {socketError && <p style={{ color: 'red' }}>{socketError}</p>}
 
       <p><strong>Negotiation ID:</strong> {negotiation.id}</p>
       <p><strong>Status:</strong> {negotiation.status}</p>
+      <p><strong>Socket:</strong> {socketState}</p>
       <p><strong>Expires At:</strong> {formatDateTime(negotiation.expiresAt)}</p>
       <p><strong>Countdown:</strong> {formatRemaining(remainingMs)}</p>
 
@@ -5307,9 +5417,7 @@ function MyNegotiationPage() {
 
       <div style={{ marginTop: '20px', marginBottom: '20px' }}>
         <h2>Other Party</h2>
-        <p>
-          <strong>User:</strong> {negotiation.user?.first_name} {negotiation.user?.last_name}
-        </p>
+        <p><strong>Name:</strong> {otherParty}</p>
       </div>
 
       <div style={{ marginTop: '20px', marginBottom: '20px' }}>
@@ -5327,7 +5435,6 @@ function MyNegotiationPage() {
         >
           Accept
         </button>
-
         <button
           type="button"
           style={styles.secondaryButton}
@@ -5336,11 +5443,10 @@ function MyNegotiationPage() {
         >
           Decline
         </button>
-
         <button
           type="button"
           style={styles.secondaryButton}
-          onClick={loadNegotiation}
+          onClick={() => loadNegotiation(false)}
         >
           Refresh
         </button>
@@ -5351,6 +5457,80 @@ function MyNegotiationPage() {
           This negotiation is no longer active.
         </p>
       )}
+
+      <div style={{ marginTop: '28px' }}>
+        <h2>Live Negotiation Chat</h2>
+        <p style={{ marginBottom: '12px' }}>
+          Live-only chat. Message history is not persisted.
+        </p>
+
+        <div
+          style={{
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            padding: '12px',
+            minHeight: '180px',
+            maxHeight: '280px',
+            overflowY: 'auto',
+            background: '#fafafa',
+          }}
+        >
+          {chatMessages.length === 0 ? (
+            <p style={{ margin: 0 }}>No live messages yet.</p>
+          ) : (
+            chatMessages.map((msg, index) => {
+              const mine =
+                (role === 'REGULAR' && msg.sender?.role === 'regular') ||
+                (role === 'BUSINESS' && msg.sender?.role === 'business');
+
+              return (
+                <div
+                  key={`${msg.createdAt}-${index}`}
+                  style={{
+                    marginBottom: '12px',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    background: mine ? '#e8f4ff' : '#f1f1f1',
+                  }}
+                >
+                  <p style={{ margin: 0, fontWeight: 600 }}>
+                    {mine ? 'You' : msg.sender?.role === 'business' ? 'Business' : 'Regular User'}
+                  </p>
+                  <p style={{ margin: '6px 0' }}>{msg.text}</p>
+                  <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.75 }}>
+                    {formatDateTime(msg.createdAt)}
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <form onSubmit={handleSendMessage} style={{ marginTop: '12px' }}>
+          <input
+            type="text"
+            value={chatText}
+            onChange={(e) => setChatText(e.target.value)}
+            placeholder={isActive ? 'Type a negotiation message...' : 'Negotiation is inactive'}
+            disabled={!isActive}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              border: '1px solid #ccc',
+              marginBottom: '10px',
+              boxSizing: 'border-box',
+            }}
+          />
+          <button
+            type="submit"
+            style={styles.button}
+            disabled={!isActive || !chatText.trim()}
+          >
+            Send Message
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

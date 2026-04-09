@@ -51,8 +51,20 @@ function attach_sockets(server) {
     }
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     socket.join(`account:${socket.account.id}`);
+    try {
+      const current = await findCurrentActiveNegotiationForSocket(
+        socket.account.id,
+        socket.account.role
+      );
+
+      if (current) {
+        socket.join(`negotiation:${current.id}`);
+      }
+    } catch (_err) {
+      // ignore reconnect room-join errors
+    }
 
     socket.on('negotiation:message', async (payload = {}) => {
       try {
