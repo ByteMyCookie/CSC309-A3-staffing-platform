@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const email = 'admin1@csc309.utoronto.ca';
-  const passwordHash = await bcrypt.hash('123123', 10);
+  const passwordHash = await bcrypt.hash('Admin123!', 10);
 
   const existing = await prisma.account.findUnique({
     where: { email },
