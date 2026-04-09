@@ -1,14 +1,21 @@
 Temporary Staffing Platform - INSTALL
 
-Overview
-This project contains:
-- frontend/: React + Vite frontend
-- backend/: Node.js + Express + Prisma backend
-- SQLite database stored at backend/prisma/dev.db
-
-Packages required
+Environment
+- Developed and tested on Ubuntu 24.04 / WSL2
 - Node.js 20+
 - npm
+
+Project structure
+- frontend/: React + Vite frontend
+- backend/: Node.js + Express + Prisma backend
+- SQLite database: backend/prisma/dev.db
+
+Additional packages used
+- socket.io-client
+  Install in frontend with:
+  npm install socket.io-client
+  Purpose:
+  Enables live negotiation chat and negotiation start notifications.
 
 Local backend setup
 1. cd backend
@@ -18,9 +25,10 @@ Local backend setup
 5. npm run seed
 6. node src/server.js 3000
 
-Seeded admin account
-- email: admin1@csc309.utoronto.ca
-- password: 123123
+Seeded demo accounts
+- admin1@csc309.utoronto.ca / 123123
+- business1@csc309.utoronto.ca / 123123
+- regular2@csc309.utoronto.ca / 123123
 
 Local frontend setup
 1. cd frontend
@@ -30,14 +38,17 @@ Local frontend setup
 4. npm run dev
 
 Deployment
-Frontend:
+
+Frontend
 - Platform: Vercel
 - Root Directory: frontend
 - Framework Preset: Vite
 - Environment Variable:
   VITE_BACKEND_URL=https://csc309-a3-staffing-platform.onrender.com
+- Note:
+  frontend/vercel.json is used to rewrite all routes to / so React Router works on refresh/direct links.
 
-Backend:
+Backend
 - Platform: Render
 - Root Directory: backend
 - Build Command:
@@ -55,4 +66,5 @@ Live URLs
 Notes
 - Uploaded files are stored under backend/uploads locally.
 - The backend uses SQLite.
-- On free hosting, SQLite data and uploaded files are not reliable across resets/redeploys.
+- On free hosting, SQLite data and uploaded files are not reliable across resets or redeploys.
+- The backend is reseeded on deploy/restart.
