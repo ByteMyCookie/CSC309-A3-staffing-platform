@@ -16,10 +16,14 @@ function getRoleFromToken() {
 }
 
 function Navbar({ authToken, onLogout }) {
+  const [openMenu, setOpenMenu] = useState(null);
+
   const isLoggedIn = Boolean(authToken);
   const role = authToken ? getRoleFromToken() : null;
+
   const isAdmin = role === 'ADMIN';
   const isRegular = role === 'REGULAR';
+  const isBusiness = role === 'BUSINESS';
 
   function handleLogout() {
     localStorage.removeItem('token');
@@ -27,38 +31,163 @@ function Navbar({ authToken, onLogout }) {
     window.location.href = '/';
   }
 
+  function toggleMenu(menuName) {
+    setOpenMenu((prev) => (prev === menuName ? null : menuName));
+  }
+
+  function closeMenus() {
+    setOpenMenu(null);
+  }
+
   return (
     <nav style={styles.nav}>
-      <Link to="/" style={styles.link}>Home</Link>
-      <Link to="/login" style={styles.link}>Login</Link>
-      <Link to="/register/user" style={styles.link}>Register User</Link>
-      <Link to="/register/business" style={styles.link}>Register Business</Link>
-      <Link to="/businesses" style={styles.link}>Businesses</Link>
-      {isAdmin && <Link to="/admin/businesses" style={styles.link}>Admin Businesses</Link>}
-      {isLoggedIn && <Link to="/me" style={styles.link}>My Account</Link>}
-      <Link to="/activate" style={styles.link}>Activate</Link>
-      <Link to="/forgot-password" style={styles.link}>Forgot Password</Link>
-      {isRegular && <Link to="/position-types" style={styles.link}>Position Types</Link>}
-      {isRegular && <Link to="/jobs" style={styles.link}>Jobs</Link>}
-      {isRegular && <Link to="/qualifications" style={styles.link}>My Qualifications</Link>}
-      {isAdmin && <Link to="/admin/qualifications" style={styles.link}>Admin Qualifications</Link>}
-      {isAdmin && <Link to="/admin/users" style={styles.link}>Admin Users</Link>}
-      {isAdmin && <Link to="/admin/position-types" style={styles.link}>Admin Position Types</Link>}
-      {role === 'BUSINESS' && <Link to="/business/jobs" style={styles.link}>My Jobs</Link>}
-      {isAdmin && <Link to="/admin/system" style={styles.link}>Admin System</Link>}
+      <div style={styles.navLeft}>
+        <Link to="/" style={styles.link} onClick={closeMenus}>
+          Home
+        </Link>
 
-      {isLoggedIn && (role === 'REGULAR' || role === 'BUSINESS') && (
-        <Link to="/negotiation" style={styles.link}>My Negotiation</Link>
-      )}
+        <div style={styles.dropdown}>
+          <button
+            type="button"
+            style={styles.navMenuButton}
+            onClick={() => toggleMenu('public')}
+          >
+            Public
+          </button>
 
-      {isRegular && <Link to="/my-interests" style={styles.link}>My Interests</Link>}
-      {isRegular && <Link to="/my-invitations" style={styles.link}>My Invitations</Link>}
+          {openMenu === 'public' && (
+            <div style={styles.dropdownMenu}>
+              <Link to="/businesses" style={styles.dropdownItem} onClick={closeMenus}>
+                Businesses
+              </Link>
+              <Link to="/login" style={styles.dropdownItem} onClick={closeMenus}>
+                Login
+              </Link>
+              <Link to="/register/user" style={styles.dropdownItem} onClick={closeMenus}>
+                Register User
+              </Link>
+              <Link to="/register/business" style={styles.dropdownItem} onClick={closeMenus}>
+                Register Business
+              </Link>
+              <Link to="/activate" style={styles.dropdownItem} onClick={closeMenus}>
+                Activate
+              </Link>
+              <Link to="/forgot-password" style={styles.dropdownItem} onClick={closeMenus}>
+                Forgot Password
+              </Link>
+            </div>
+          )}
+        </div>
 
-      {isLoggedIn && (
-        <button onClick={handleLogout} style={styles.logoutButton}>
-          Logout
-        </button>
-      )}
+        {isRegular && (
+          <div style={styles.dropdown}>
+            <button
+              type="button"
+              style={styles.navMenuButton}
+              onClick={() => toggleMenu('regular')}
+            >
+              Regular
+            </button>
+
+            {openMenu === 'regular' && (
+              <div style={styles.dropdownMenu}>
+                <Link to="/me" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Account
+                </Link>
+                <Link to="/position-types" style={styles.dropdownItem} onClick={closeMenus}>
+                  Position Types
+                </Link>
+                <Link to="/jobs" style={styles.dropdownItem} onClick={closeMenus}>
+                  Jobs
+                </Link>
+                <Link to="/qualifications" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Qualifications
+                </Link>
+                <Link to="/my-interests" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Interests
+                </Link>
+                <Link to="/my-invitations" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Invitations
+                </Link>
+                <Link to="/negotiation" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Negotiation
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isBusiness && (
+          <div style={styles.dropdown}>
+            <button
+              type="button"
+              style={styles.navMenuButton}
+              onClick={() => toggleMenu('business')}
+            >
+              Business
+            </button>
+
+            {openMenu === 'business' && (
+              <div style={styles.dropdownMenu}>
+                <Link to="/me" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Account
+                </Link>
+                <Link to="/business/jobs" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Jobs
+                </Link>
+                <Link to="/negotiation" style={styles.dropdownItem} onClick={closeMenus}>
+                  My Negotiation
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {isAdmin && (
+          <div style={styles.dropdown}>
+            <button
+              type="button"
+              style={styles.navMenuButton}
+              onClick={() => toggleMenu('admin')}
+            >
+              Admin
+            </button>
+
+            {openMenu === 'admin' && (
+              <div style={styles.dropdownMenu}>
+                <Link to="/admin/businesses" style={styles.dropdownItem} onClick={closeMenus}>
+                  Businesses
+                </Link>
+                <Link to="/admin/qualifications" style={styles.dropdownItem} onClick={closeMenus}>
+                  Qualifications
+                </Link>
+                <Link to="/admin/users" style={styles.dropdownItem} onClick={closeMenus}>
+                  Users
+                </Link>
+                <Link to="/admin/position-types" style={styles.dropdownItem} onClick={closeMenus}>
+                  Position Types
+                </Link>
+                <Link to="/admin/system" style={styles.dropdownItem} onClick={closeMenus}>
+                  System
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={styles.navRight}>
+        {isLoggedIn && (
+          <>
+            <Link to="/me" style={styles.link} onClick={closeMenus}>
+              Account
+            </Link>
+            <button onClick={handleLogout} style={styles.logoutButton}>
+              Logout
+            </button>
+          </>
+        )}
+      </div>
     </nav>
   );
 }
@@ -5794,5 +5923,69 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
+  },
+  nav: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '14px 24px',
+    backgroundColor: '#132032',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1000,
+  },
+
+  navLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '14px',
+    flexWrap: 'wrap',
+  },
+
+  navRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginLeft: 'auto',
+  },
+
+  dropdown: {
+    position: 'relative',
+  },
+
+  navMenuButton: {
+    padding: '10px 14px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: 'white',
+    backgroundColor: 'transparent',
+    border: '1px solid rgba(255,255,255,0.18)',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+
+  dropdownMenu: {
+    position: 'absolute',
+    top: 'calc(100% + 8px)',
+    left: 0,
+    minWidth: '220px',
+    backgroundColor: 'white',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+    padding: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+
+  dropdownItem: {
+    color: '#111827',
+    textDecoration: 'none',
+    fontWeight: 'bold',
+    padding: '10px 12px',
+    borderRadius: '6px',
+    backgroundColor: 'white',
   },
 };

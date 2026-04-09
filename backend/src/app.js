@@ -2289,9 +2289,10 @@ async function listMyInvitations(accountId, query) {
     where: {
       userId: accountId,
       businessInterested: true,
-      NOT: {
-        candidateInterested: true,
-      },
+      OR: [
+        { candidateInterested: false },
+        { candidateInterested: null },
+      ],
     },
     include: {
       job: {
