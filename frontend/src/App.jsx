@@ -819,10 +819,16 @@ function BusinessDetailPage() {
       <p><strong>Email:</strong> {business.email}</p>
       {business.owner_name && <p><strong>Owner Name:</strong> {business.owner_name}</p>}
       {typeof business.activated !== 'undefined' && (
-        <p><strong>Activated:</strong> {String(business.activated)}</p>
+        <p>
+          <strong>Activated:</strong>{' '}
+          <StatusBadge value={business.activated ? 'active' : 'inactive'} />
+        </p>
       )}
       {typeof business.verified !== 'undefined' && (
-        <p><strong>Verified:</strong> {String(business.verified)}</p>
+        <p>
+          <strong>Verified:</strong>{' '}
+          <StatusBadge value={business.verified ? 'verified' : 'unverified'} />
+        </p>
       )}
       <p><strong>Phone:</strong> {business.phone_number}</p>
       <p><strong>Address:</strong> {business.postal_address}</p>
@@ -1026,8 +1032,14 @@ function AdminBusinessesPage() {
               <h2>{business.business_name}</h2>
               <p><strong>Email:</strong> {business.email}</p>
               {business.owner_name && <p><strong>Owner Name:</strong> {business.owner_name}</p>}
-              <p><strong>Activated:</strong> {String(business.activated)}</p>
-              <p><strong>Verified:</strong> {String(business.verified)}</p>
+              <p>
+                <strong>Activated:</strong>{' '}
+                <StatusBadge value={business.activated ? 'active' : 'inactive'} />
+              </p>
+              <p>
+                <strong>Verified:</strong>{' '}
+                <StatusBadge value={business.verified ? 'verified' : 'unverified'} />
+              </p>
 
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
                 <Link to={`/businesses/${business.id}`} style={styles.smallButton}>
@@ -1202,19 +1214,28 @@ function MyAccountPage() {
       )}
 
       {typeof accountInfo.activated !== 'undefined' && (
-        <p><strong>Activated:</strong> {String(accountInfo.activated)}</p>
+        <p>
+          <strong>Activated:</strong>{' '}
+          <StatusBadge value={accountInfo.activated ? 'active' : 'inactive'} />
+        </p>
       )}
-
       {typeof accountInfo.verified !== 'undefined' && (
-        <p><strong>Verified:</strong> {String(accountInfo.verified)}</p>
+        <p>
+          <strong>Verified:</strong>{' '}
+          <StatusBadge value={accountInfo.verified ? 'verified' : 'unverified'} />
+        </p>
       )}
-
       {typeof accountInfo.suspended !== 'undefined' && (
-        <p><strong>Suspended:</strong> {String(accountInfo.suspended)}</p>
+        <p>
+          <strong>Suspended:</strong>{' '}
+          <StatusBadge value={accountInfo.suspended ? 'suspended' : 'not suspended'} />
+        </p>
       )}
-
       {typeof accountInfo.available !== 'undefined' && (
-        <p><strong>Available:</strong> {String(accountInfo.available)}</p>
+        <p>
+          <strong>Available:</strong>{' '}
+          <StatusBadge value={accountInfo.available ? 'available' : 'unavailable'} />
+        </p>
       )}
 
       {accountInfo.biography && (
