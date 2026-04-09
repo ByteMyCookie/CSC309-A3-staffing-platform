@@ -1,6 +1,58 @@
-# This text file should explain how to deploy your website.
+Temporary Staffing Platform - INSTALL
 
-# You should write detailed description on:
+Overview
+This project has:
+- a frontend in frontend/ built with React and Vite
+- a backend in backend/ built with Node.js, Express, Prisma, and SQLite
 
-# 1. All the packages you need to install
-# 2. How to configure various servers (e.g., Nginx, Apache, etc)
+Package requirements
+Install:
+- Node.js 20 or newer
+- npm
+
+Local backend setup
+1. cd backend
+2. npm install
+3. npx prisma generate
+4. npx prisma db push
+5. npm run seed
+6. node src/server.js 3000
+
+Seeded admin account
+- email: admin1@csc309.utoronto.ca
+- password: 123123
+
+Local frontend setup
+1. cd frontend
+2. npm install
+3. create a file named .env.local with:
+   VITE_BACKEND_URL=http://localhost:3000
+4. npm run dev
+
+Deployed services
+- frontend: https://csc-309-a3-staffing-platform.vercel.app/
+- backend: https://csc309-a3-staffing-platform.onrender.com
+
+Deployment configuration
+
+Backend on Render
+- Root Directory: backend
+- Build Command:
+  npm install && npx prisma generate && npx prisma db push && npm run seed
+- Start Command:
+  node src/server.js $PORT
+- Environment Variable:
+  FRONTEND_ORIGIN=https://csc-309-a3-staffing-platform.vercel.app/
+
+Frontend on Vercel
+- Root Directory: frontend
+- Framework Preset: Vite
+- Environment Variable:
+  VITE_BACKEND_URL=https://csc309-a3-staffing-platform.onrender.com
+
+Notes
+- The backend stores data in SQLite.
+- The backend stores uploaded files locally in uploads/.
+- On free hosting, SQLite data and uploaded files may be lost after redeploys or service resets.
+- The backend health endpoint is:
+  https://csc309-a3-staffing-platform.onrender.com/health
