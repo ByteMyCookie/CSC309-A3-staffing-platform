@@ -167,6 +167,7 @@ function Navbar({ authToken, onLogout }) {
           <Link to="/login" style={styles.navMenuLink}>Login</Link>
           <Link to="/register/user" style={styles.navMenuLink}>Register User</Link>
           <Link to="/register/business" style={styles.navMenuLink}>Register Business</Link>
+          <Link to="/forgot-password" style={styles.navMenuLink}>Forgot Password</Link>
         </NavDropdown>
 
         {isRegular && (
@@ -174,6 +175,7 @@ function Navbar({ authToken, onLogout }) {
             <Link to="/me" style={styles.navMenuLink}>My Account</Link>
             <Link to="/jobs" style={styles.navMenuLink}>Jobs</Link>
             <Link to="/qualifications" style={styles.navMenuLink}>Qualifications</Link>
+            <Link to="/position-types" style={styles.navMenuLink}>Position Types</Link>
             <Link to="/my-interests" style={styles.navMenuLink}>Interests</Link>
             <Link to="/my-invitations" style={styles.navMenuLink}>Invitations</Link>
             <Link to="/negotiation" style={styles.navMenuLink}>Negotiation</Link>
